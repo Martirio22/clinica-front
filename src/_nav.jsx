@@ -85,6 +85,30 @@ const _nav = [
       text: 'NEW',
     },
   },
+
+  {
+    component: CNavTitle,
+    name: 'Administración',
+  },
+  {
+    component: CNavGroup,
+    name: 'Admin de Usuarios',
+    to: '/administracion/admin-usuarios',
+    icon: <CIcon icon={cilNotes} customClassName="nav-icon" />,
+    items: [
+      {
+        component: CNavItem,
+        name: 'Usuarios',
+        to: '/administracion/admin-usuarios/usuarios',
+      },
+      {
+        component: CNavItem,
+        name: 'Roles',
+        to: '/administracion/admin-usuarios/roles',
+      },
+    ],
+  },
+
   {
     component: CNavTitle,
     name: 'Theme',

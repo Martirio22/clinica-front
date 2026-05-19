@@ -14,6 +14,8 @@
  */
 
 import React from 'react'
+import Usuarios from './views/system/administracion/Usuarios'
+import Roles from './views/system/administracion/Roles'
 
 // Dashboard
 const Dashboard = React.lazy(() => import('./views/dashboard/Dashboard'))
@@ -89,6 +91,12 @@ const Widgets = React.lazy(() => import('./views/widgets/Widgets'))
 export const routes = [
   { path: '/', exact: true, name: 'Home' },
   { path: '/dashboard', name: 'Dashboard', element: Dashboard },
+
+  { path: '/administracion', name: 'Administración', exact: true },
+  { path: '/administracion/admin-usuarios', name: 'Admin de Usuarios', exact: true },
+  { path: '/administracion/admin-usuarios/usuarios', name: 'Usuarios', element: Usuarios },
+  { path: '/administracion/admin-usuarios/roles', name: 'Roles', element: Roles },
+
   { path: '/theme', name: 'Theme', element: Colors, exact: true },
   { path: '/theme/colors', name: 'Colors', element: Colors },
   { path: '/theme/typography', name: 'Typography', element: Typography },
