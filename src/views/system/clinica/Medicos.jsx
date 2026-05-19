@@ -1,0 +1,592 @@
+import React, { useEffect, useMemo, useState } from 'react'
+import {
+  CAlert,
+  CBadge,
+  CButton,
+  CCard,
+  CCardBody,
+  CCardHeader,
+  CCol,
+  CFormInput,
+  CFormLabel,
+  CFormSelect,
+  CModal,
+  CModalBody,
+  CModalFooter,
+  CModalHeader,
+  CModalTitle,
+  CRow,
+  CSpinner,
+  CTable,
+  CTableBody,
+  CTableDataCell,
+  CTableHead,
+  CTableHeaderCell,
+  CTableRow,
+} from '@coreui/react'
+
+import { doctorService } from '../../../services/doctorService'
+import { userService } from '../../../services/userService'
+import { specialtyService } from '../../../services/specialtyService'
+
+const initialForm = {
+  userId: '',
+  specialtyId: '',
+  professionalRegistry: '',
+  appointmentDurationMinutes: 30,
+  isActive: true,
+}
+
+const Medicos = () => {
+  const [medicos, setMedicos] = useState([])
+  const [usuariosMedicos, setUsuariosMedicos] = useState([])
+  const [especialidades, setEspecialidades] = useState([])
+
+  const [form, setForm] = useState(initialForm)
+  const [editingDoctor, setEditingDoctor] = useState(null)
+
+  const [search, setSearch] = useState('')
+  const [filtroSpecialtyId, setFiltroSpecialtyId] = useState('')
+
+  const [visible, setVisible] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [saving, setSaving] = useState(false)
+
+  const [error, setError] = useState('')
+  const [modalError, setModalError] = useState('')
+  const [success, setSuccess] = useState('')
+
+  const cargarUsuariosMedicos = async () => {
+    try {
+      const data = await userService.listarMedicosDisponibles()
+      setUsuariosMedicos(data || [])
+    } catch (err) {
+      console.error(err)
+      setError('No se pudieron cargar los usuarios con rol médico.')
+    }
+  }
+
+  const cargarEspecialidades = async () => {
+    try {
+      const data = await specialtyService.listar()
+      setEspecialidades(data || [])
+    } catch (err) {
+      console.error(err)
+      setError('No se pudieron cargar las especialidades.')
+    }
+  }
+
+  const cargarMedicos = async () => {
+    try {
+      setLoading(true)
+      setError('')
+
+      const data = await doctorService.listar()
+      setMedicos(data || [])
+    } catch (err) {
+      console.error(err)
+      setError('No se pudieron cargar los médicos.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const cargarMedicosPorEspecialidad = async (specialtyId) => {
+    try {
+      setLoading(true)
+      setError('')
+
+      if (!specialtyId) {
+        await cargarMedicos()
+        return
+      }
+
+      const data = await doctorService.listarPorSpecialty(specialtyId)
+      setMedicos(data || [])
+    } catch (err) {
+      console.error(err)
+      setError('No se pudieron cargar los médicos de la especialidad.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    cargarUsuariosMedicos()
+    cargarEspecialidades()
+    cargarMedicos()
+  }, [])
+
+  const handleFiltroEspecialidad = async (e) => {
+    const specialtyId = e.target.value
+    setFiltroSpecialtyId(specialtyId)
+    await cargarMedicosPorEspecialidad(specialtyId)
+  }
+
+  const medicosFiltrados = useMemo(() => {
+    const texto = String(search || '').toLowerCase().trim()
+
+    if (!texto) return medicos
+
+    return medicos.filter((doctor) => {
+      const usuario = obtenerUsuarioMedico(doctor.userId)
+      const especialidad = obtenerEspecialidad(doctor.specialtyId)
+
+      const nombreUsuario = `${usuario?.firstName || ''} ${usuario?.lastName || ''}`.toLowerCase()
+      const email = String(usuario?.email || '').toLowerCase()
+      const username = String(usuario?.username || '').toLowerCase()
+      const especialidadNombre = String(especialidad?.name || '').toLowerCase()
+      const registro = String(doctor.professionalRegistry || '').toLowerCase()
+
+      return (
+        nombreUsuario.includes(texto) ||
+        email.includes(texto) ||
+        username.includes(texto) ||
+        especialidadNombre.includes(texto) ||
+        registro.includes(texto)
+      )
+    })
+  }, [medicos, search, usuariosMedicos, especialidades])
+
+  const obtenerUsuarioMedico = (userId) => {
+    return usuariosMedicos.find((user) => user.id === userId)
+  }
+
+  const obtenerEspecialidad = (specialtyId) => {
+    return especialidades.find((specialty) => specialty.id === specialtyId)
+  }
+
+  const obtenerNombreUsuario = (userId) => {
+    const usuario = obtenerUsuarioMedico(userId)
+
+    if (!usuario) return '-'
+
+    return `${usuario.firstName || ''} ${usuario.lastName || ''}`.trim()
+  }
+
+  const obtenerNombreEspecialidad = (specialtyId) => {
+    const especialidad = obtenerEspecialidad(specialtyId)
+    return especialidad?.name || '-'
+  }
+
+  const abrirModalCrear = () => {
+    setEditingDoctor(null)
+    setForm({
+      ...initialForm,
+      specialtyId: filtroSpecialtyId || '',
+    })
+    setError('')
+    setModalError('')
+    setSuccess('')
+    setVisible(true)
+  }
+
+  const abrirModalEditar = (doctor) => {
+    setEditingDoctor(doctor)
+
+    setForm({
+      userId: doctor.userId || '',
+      specialtyId: doctor.specialtyId || '',
+      professionalRegistry: doctor.professionalRegistry || '',
+      appointmentDurationMinutes: doctor.appointmentDurationMinutes || 30,
+      isActive: doctor.isActive ?? true,
+    })
+
+    setError('')
+    setModalError('')
+    setSuccess('')
+    setVisible(true)
+  }
+
+  const cerrarModal = () => {
+    setVisible(false)
+    setEditingDoctor(null)
+    setForm(initialForm)
+    setModalError('')
+  }
+
+  const handleChange = (e) => {
+    const { name, value } = e.target
+
+    setForm((prev) => ({
+      ...prev,
+      [name]: value,
+    }))
+  }
+
+  const handleChangeEstado = (e) => {
+    setForm((prev) => ({
+      ...prev,
+      isActive: e.target.value === 'true',
+    }))
+  }
+
+  const validarFormulario = () => {
+    if (!String(form.userId || '').trim()) return 'Debe seleccionar un usuario médico.'
+    if (!String(form.specialtyId || '').trim()) return 'Debe seleccionar una especialidad.'
+    if (!String(form.professionalRegistry || '').trim()) {
+      return 'El número de registro profesional es requerido.'
+    }
+
+    const duration = Number(form.appointmentDurationMinutes)
+
+    if (!duration || duration <= 0) {
+      return 'La duración de la cita debe ser mayor a 0.'
+    }
+
+    return ''
+  }
+
+  const guardarMedico = async () => {
+    try {
+      const mensajeValidacion = validarFormulario()
+
+      if (mensajeValidacion) {
+        setModalError(mensajeValidacion)
+        return
+      }
+
+      setSaving(true)
+      setModalError('')
+      setSuccess('')
+
+      const payload = {
+        userId: String(form.userId || '').trim(),
+        specialtyId: String(form.specialtyId || '').trim(),
+        professionalRegistry: String(form.professionalRegistry || '').trim(),
+        appointmentDurationMinutes: Number(form.appointmentDurationMinutes),
+        isActive: form.isActive,
+      }
+
+      if (editingDoctor) {
+        await doctorService.actualizar(editingDoctor.id, payload)
+        setSuccess('Médico actualizado correctamente.')
+      } else {
+        await doctorService.crear(payload)
+        setSuccess('Médico creado correctamente.')
+      }
+
+      cerrarModal()
+
+      if (filtroSpecialtyId) {
+        await cargarMedicosPorEspecialidad(filtroSpecialtyId)
+      } else {
+        await cargarMedicos()
+      }
+    } catch (err) {
+      console.error(err)
+      setModalError(err?.message || 'Ocurrió un error al guardar el médico.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const eliminarMedico = async (doctor) => {
+    const nombre = obtenerNombreUsuario(doctor.userId)
+
+    const confirmar = window.confirm(`¿Seguro que deseas inactivar al médico ${nombre}?`)
+
+    if (!confirmar) return
+
+    try {
+      setLoading(true)
+      setError('')
+      setSuccess('')
+
+      await doctorService.eliminar(doctor.id)
+
+      setSuccess('Médico inactivado correctamente.')
+
+      if (filtroSpecialtyId) {
+        await cargarMedicosPorEspecialidad(filtroSpecialtyId)
+      } else {
+        await cargarMedicos()
+      }
+    } catch (err) {
+      console.error(err)
+      setError('No se pudo inactivar el médico.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const irHorarios = (doctor) => {
+    alert(`Aquí puedes redirigir a horarios del médico: ${doctor.id}`)
+  }
+
+  const irBloqueos = (doctor) => {
+    alert(`Aquí puedes redirigir a bloqueos del médico: ${doctor.id}`)
+  }
+
+  const configurarHorario = (doctor) => {
+    alert(`Aquí puedes abrir la pantalla para configurar horario del médico: ${doctor.id}`)
+  }
+
+  return (
+    <>
+      <CCard>
+        <CCardHeader className="d-flex justify-content-between align-items-center">
+          <strong>Administración de Médicos</strong>
+
+          <CButton color="primary" onClick={abrirModalCrear}>
+            Nuevo médico
+          </CButton>
+        </CCardHeader>
+
+        <CCardBody>
+          {error && (
+            <CAlert color="danger" dismissible onClose={() => setError('')}>
+              {error}
+            </CAlert>
+          )}
+
+          {success && (
+            <CAlert color="success" dismissible onClose={() => setSuccess('')}>
+              {success}
+            </CAlert>
+          )}
+
+          <CRow className="mb-3">
+            <CCol md={5}>
+              <CFormLabel>Buscar médico</CFormLabel>
+              <CFormInput
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Buscar por nombre, email, especialidad o registro"
+              />
+            </CCol>
+
+            <CCol md={5}>
+              <CFormLabel>Filtrar por especialidad</CFormLabel>
+              <CFormSelect value={filtroSpecialtyId} onChange={handleFiltroEspecialidad}>
+                <option value="">Todas las especialidades</option>
+
+                {especialidades.map((specialty) => (
+                  <option key={specialty.id} value={specialty.id}>
+                    {specialty.name}
+                  </option>
+                ))}
+              </CFormSelect>
+            </CCol>
+          </CRow>
+
+          {loading ? (
+            <div className="text-center my-4">
+              <CSpinner color="primary" />
+            </div>
+          ) : (
+            <CTable hover responsive align="middle">
+              <CTableHead color="light">
+                <CTableRow>
+                  <CTableHeaderCell scope="col">#</CTableHeaderCell>
+                  <CTableHeaderCell scope="col">Médico</CTableHeaderCell>
+                  <CTableHeaderCell scope="col">Especialidad</CTableHeaderCell>
+                  <CTableHeaderCell scope="col">Registro profesional</CTableHeaderCell>
+                  <CTableHeaderCell scope="col">Duración cita</CTableHeaderCell>
+                  <CTableHeaderCell scope="col">Estado</CTableHeaderCell>
+                  <CTableHeaderCell scope="col" className="text-end">
+                    Acciones
+                  </CTableHeaderCell>
+                </CTableRow>
+              </CTableHead>
+
+              <CTableBody>
+                {medicosFiltrados.length === 0 ? (
+                  <CTableRow>
+                    <CTableDataCell colSpan={7} className="text-center">
+                      No existen médicos registrados.
+                    </CTableDataCell>
+                  </CTableRow>
+                ) : (
+                  medicosFiltrados.map((doctor, index) => (
+                    <CTableRow key={doctor.id}>
+                      <CTableHeaderCell scope="row">{index + 1}</CTableHeaderCell>
+
+                      <CTableDataCell>
+                        <div>{obtenerNombreUsuario(doctor.userId)}</div>
+                        <small className="text-body-secondary">
+                          {obtenerUsuarioMedico(doctor.userId)?.email || ''}
+                        </small>
+                      </CTableDataCell>
+
+                      <CTableDataCell>{obtenerNombreEspecialidad(doctor.specialtyId)}</CTableDataCell>
+
+                      <CTableDataCell>{doctor.professionalRegistry}</CTableDataCell>
+
+                      <CTableDataCell>{doctor.appointmentDurationMinutes} min</CTableDataCell>
+
+                      <CTableDataCell>
+                        {doctor.isActive ? (
+                          <CBadge color="success">Activo</CBadge>
+                        ) : (
+                          <CBadge color="secondary">Inactivo</CBadge>
+                        )}
+                      </CTableDataCell>
+
+                      <CTableDataCell className="text-end">
+                        <CButton
+                          color="info"
+                          variant="outline"
+                          size="sm"
+                          className="me-2 mb-1"
+                          onClick={() => irHorarios(doctor)}
+                        >
+                          Ver horarios
+                        </CButton>
+
+                        <CButton
+                          color="dark"
+                          variant="outline"
+                          size="sm"
+                          className="me-2 mb-1"
+                          onClick={() => irBloqueos(doctor)}
+                        >
+                          Ver bloqueos
+                        </CButton>
+
+                        <CButton
+                          color="primary"
+                          variant="outline"
+                          size="sm"
+                          className="me-2 mb-1"
+                          onClick={() => configurarHorario(doctor)}
+                        >
+                          Configurar horario
+                        </CButton>
+
+                        <CButton
+                          color="warning"
+                          variant="outline"
+                          size="sm"
+                          className="me-2 mb-1"
+                          onClick={() => abrirModalEditar(doctor)}
+                        >
+                          Editar
+                        </CButton>
+
+                        <CButton
+                          color="danger"
+                          variant="outline"
+                          size="sm"
+                          className="mb-1"
+                          disabled={!doctor.isActive}
+                          onClick={() => eliminarMedico(doctor)}
+                        >
+                          Inactivar
+                        </CButton>
+                      </CTableDataCell>
+                    </CTableRow>
+                  ))
+                )}
+              </CTableBody>
+            </CTable>
+          )}
+        </CCardBody>
+      </CCard>
+
+      <CModal visible={visible} onClose={cerrarModal} backdrop="static" size="lg">
+        <CModalHeader>
+          <CModalTitle>{editingDoctor ? 'Editar médico' : 'Nuevo médico'}</CModalTitle>
+        </CModalHeader>
+
+        <CModalBody>
+          {modalError && (
+            <CAlert color="danger" dismissible onClose={() => setModalError('')}>
+              {modalError}
+            </CAlert>
+          )}
+
+          <CRow className="g-3">
+            <CCol md={6}>
+              <CFormLabel>Usuario médico</CFormLabel>
+              <CFormSelect
+                name="userId"
+                value={form.userId || ''}
+                onChange={handleChange}
+                disabled={!!editingDoctor}
+              >
+                <option value="">Seleccione un usuario con rol médico</option>
+
+                {usuariosMedicos
+                  .filter((user) => user.isActive)
+                  .map((user) => (
+                    <option key={user.id} value={user.id}>
+                      {user.firstName} {user.lastName} - {user.email}
+                    </option>
+                  ))}
+              </CFormSelect>
+            </CCol>
+
+            <CCol md={6}>
+              <CFormLabel>Especialidad</CFormLabel>
+              <CFormSelect
+                name="specialtyId"
+                value={form.specialtyId || ''}
+                onChange={handleChange}
+              >
+                <option value="">Seleccione una especialidad</option>
+
+                {especialidades
+                  .filter((specialty) => specialty.isActive)
+                  .map((specialty) => (
+                    <option key={specialty.id} value={specialty.id}>
+                      {specialty.name}
+                    </option>
+                  ))}
+              </CFormSelect>
+            </CCol>
+
+            <CCol md={6}>
+              <CFormLabel>Número de registro profesional</CFormLabel>
+              <CFormInput
+                name="professionalRegistry"
+                value={form.professionalRegistry || ''}
+                onChange={handleChange}
+                placeholder="Ej: MP-2026-EC-99822"
+              />
+            </CCol>
+
+            <CCol md={6}>
+              <CFormLabel>Duración de cita en minutos</CFormLabel>
+              <CFormInput
+                type="number"
+                min={1}
+                name="appointmentDurationMinutes"
+                value={form.appointmentDurationMinutes || ''}
+                onChange={handleChange}
+                placeholder="Ej: 30"
+              />
+            </CCol>
+
+            <CCol md={6}>
+              <CFormLabel>Estado</CFormLabel>
+              <CFormSelect value={String(form.isActive)} onChange={handleChangeEstado}>
+                <option value="true">Activo</option>
+                <option value="false">Inactivo</option>
+              </CFormSelect>
+            </CCol>
+          </CRow>
+        </CModalBody>
+
+        <CModalFooter>
+          <CButton color="secondary" variant="outline" onClick={cerrarModal}>
+            Cancelar
+          </CButton>
+
+          <CButton color="primary" onClick={guardarMedico} disabled={saving}>
+            {saving ? (
+              <>
+                <CSpinner size="sm" className="me-2" />
+                Guardando...
+              </>
+            ) : (
+              'Guardar'
+            )}
+          </CButton>
+        </CModalFooter>
+      </CModal>
+    </>
+  )
+}
+
+export default Medicos

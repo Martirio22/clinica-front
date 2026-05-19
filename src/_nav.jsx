@@ -134,8 +134,19 @@ const _nav = [
         name: 'Especialidades',
         to: '/clinica/especialidades',
       },
+      {
+        component: CNavItem,
+        name: 'Médicos',
+        to: '/clinica/medicos',
+      },
+      {
+        component: CNavItem,
+        name: 'Asistentes Clínicos',
+        to: '/clinica/asistentes-clinicos',
+      },
     ],
   },
+
 
 
 

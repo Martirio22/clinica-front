@@ -19,6 +19,8 @@ import Roles from './views/system/administracion/Roles'
 import Sucursales from './views/system/clinica/Sucursales'
 import Consultorios from './views/system/clinica/Consultorios'
 import Especialidades from './views/system/clinica/Especialidades'
+import Medicos from './views/system/clinica/Medicos'
+import AsistentesClinicos from './views/system/clinica/AsistentesClinicos'
 
 // Dashboard
 const Dashboard = React.lazy(() => import('./views/dashboard/Dashboard'))
@@ -104,6 +106,8 @@ export const routes = [
   { path: '/clinica/sucursales', name: 'Sucursales', element: Sucursales },
   { path: '/clinica/consultorios', name: 'Consultorios', element: Consultorios },
   { path: '/clinica/especialidades', name: 'Especialidades', element: Especialidades },
+  { path: '/clinica/medicos', name: 'Médicos', element: Medicos },
+  { path: '/clinica/asistentes-clinicos', name: 'Asistentes Clínicos', element: AsistentesClinicos },
 
 
 
