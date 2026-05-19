@@ -2,7 +2,7 @@ import { apiRequest } from './api'
 
 export const branchService = {
   crear: async (branchData) => {
-    const response = await apiRequest('/security/branches', {
+    const response = await apiRequest('/clinic/branches', {
       method: 'POST',
       body: JSON.stringify(branchData),
     })
@@ -11,7 +11,7 @@ export const branchService = {
   },
 
   listar: async () => {
-    const response = await apiRequest('/security/branches', {
+    const response = await apiRequest('/clinic/branches', {
       method: 'GET',
     })
 
@@ -19,7 +19,7 @@ export const branchService = {
   },
 
   obtener: async (id) => {
-    const response = await apiRequest(`/security/branches/${id}`, {
+    const response = await apiRequest(`/clinic/branches/${id}`, {
       method: 'GET',
     })
 
@@ -27,7 +27,7 @@ export const branchService = {
   },
 
   actualizar: async (id, branchData) => {
-    const response = await apiRequest(`/security/branches/${id}`, {
+    const response = await apiRequest(`/clinic/branches/${id}`, {
       method: 'PUT',
       body: JSON.stringify(branchData),
     })
@@ -36,7 +36,7 @@ export const branchService = {
   },
 
   eliminar: async (id) => {
-    const response = await apiRequest(`/security/branches/${id}`, {
+    const response = await apiRequest(`/clinic/branches/${id}`, {
       method: 'DELETE',
     })
 

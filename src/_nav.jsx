@@ -111,6 +111,38 @@ const _nav = [
 
   {
     component: CNavTitle,
+    name: 'Clínica',
+  },
+  {
+    component: CNavGroup,
+    name: 'Gestión Clínica',
+    to: '/clinica',
+    icon: <CIcon icon={cilDescription} customClassName="nav-icon" />,
+    items: [
+      {
+        component: CNavItem,
+        name: 'Sucursales',
+        to: '/clinica/sucursales',
+      },
+      {
+        component: CNavItem,
+        name: 'Consultorios',
+        to: '/clinica/consultorios',
+      },
+      {
+        component: CNavItem,
+        name: 'Especialidades',
+        to: '/clinica/especialidades',
+      },
+    ],
+  },
+
+
+
+
+
+  {
+    component: CNavTitle,
     name: 'Theme',
   },
   {

@@ -16,6 +16,9 @@
 import React from 'react'
 import Usuarios from './views/system/administracion/Usuarios'
 import Roles from './views/system/administracion/Roles'
+import Sucursales from './views/system/clinica/Sucursales'
+import Consultorios from './views/system/clinica/Consultorios'
+import Especialidades from './views/system/clinica/Especialidades'
 
 // Dashboard
 const Dashboard = React.lazy(() => import('./views/dashboard/Dashboard'))
@@ -96,6 +99,13 @@ export const routes = [
   { path: '/administracion/admin-usuarios', name: 'Admin de Usuarios', exact: true },
   { path: '/administracion/admin-usuarios/usuarios', name: 'Usuarios', element: Usuarios },
   { path: '/administracion/admin-usuarios/roles', name: 'Roles', element: Roles },
+
+  { path: '/clinica', name: 'Clínica', exact: true },
+  { path: '/clinica/sucursales', name: 'Sucursales', element: Sucursales },
+  { path: '/clinica/consultorios', name: 'Consultorios', element: Consultorios },
+  { path: '/clinica/especialidades', name: 'Especialidades', element: Especialidades },
+
+
 
   { path: '/theme', name: 'Theme', element: Colors, exact: true },
   { path: '/theme/colors', name: 'Colors', element: Colors },
