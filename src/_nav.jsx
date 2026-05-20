@@ -191,6 +191,11 @@ const _nav = [
         name: 'Tipos de Bloqueo',
         to: '/agenda/tipos-bloqueo',
       },
+      {
+        component: CNavItem,
+        name: 'Calendario General de Citas',
+        to: '/agenda/calendario-citas',
+      },
     ],
   },
 

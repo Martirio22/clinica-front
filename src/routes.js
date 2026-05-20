@@ -26,6 +26,7 @@ import PerfilPaciente from './views/system/pacientes/PerfilPaciente'
 import HorariosMedicos from './views/system/agenda/HorariosMedicos'
 import BloqueoAgenda from './views/system/agenda/BloqueoAgenda'
 import TiposBloqueo from './views/system/agenda/TiposBloqueo'
+import CalendarioCitas from './views/system/agenda/CalendarioCitas'
 
 // Dashboard
 const Dashboard = React.lazy(() => import('./views/dashboard/Dashboard'))
@@ -122,6 +123,7 @@ export const routes = [
   { path: '/agenda/horarios-medicos', name: 'Horarios Médicos', element: HorariosMedicos },
   { path: '/agenda/bloqueo-agenda', name: 'Bloqueo de Agenda', element: BloqueoAgenda },
   { path: '/agenda/tipos-bloqueo', name: 'Tipos de Bloqueo', element: TiposBloqueo },
+  { path: '/agenda/calendario-citas', name: 'Calendario General de Citas', element: CalendarioCitas },
 
 
 
