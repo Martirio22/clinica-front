@@ -22,6 +22,10 @@ import Especialidades from './views/system/clinica/Especialidades'
 import Medicos from './views/system/clinica/Medicos'
 import AsistentesClinicos from './views/system/clinica/AsistentesClinicos'
 import Pacientes from './views/system/pacientes/Pacientes'
+import PerfilPaciente from './views/system/pacientes/PerfilPaciente'
+import HorariosMedicos from './views/system/agenda/HorariosMedicos'
+import BloqueoAgenda from './views/system/agenda/BloqueoAgenda'
+import TiposBloqueo from './views/system/agenda/TiposBloqueo'
 
 // Dashboard
 const Dashboard = React.lazy(() => import('./views/dashboard/Dashboard'))
@@ -112,6 +116,12 @@ export const routes = [
 
   { path: '/pacientes', name: 'Pacientes', exact: true },
   { path: '/pacientes/pacientes', name: 'Pacientes', element: Pacientes },
+  { path: '/pacientes/perfil-paciente/:id', name: 'Perfil Paciente', element: PerfilPaciente },
+
+  { path: '/agenda', name: 'Pantalla de Agenda', exact: true },
+  { path: '/agenda/horarios-medicos', name: 'Horarios Médicos', element: HorariosMedicos },
+  { path: '/agenda/bloqueo-agenda', name: 'Bloqueo de Agenda', element: BloqueoAgenda },
+  { path: '/agenda/tipos-bloqueo', name: 'Tipos de Bloqueo', element: TiposBloqueo },
 
 
 

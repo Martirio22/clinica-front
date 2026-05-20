@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   CAlert,
   CBadge,
@@ -56,6 +57,8 @@ const Pacientes = () => {
   const [error, setError] = useState('')
   const [modalError, setModalError] = useState('')
   const [success, setSuccess] = useState('')
+
+  const navigate = useNavigate()
 
   const cargarPacientes = async () => {
     try {
@@ -233,7 +236,7 @@ const Pacientes = () => {
   }
 
   const verPerfil = (patient) => {
-    alert(`Aquí puedes redirigir al perfil del paciente: ${patient.id}`)
+    navigate(`/pacientes/perfil-paciente/${patient.id}`)
   }
 
   const verCitas = (patient) => {

@@ -15,6 +15,7 @@ import CIcon from '@coreui/icons-react'
 import {
   cilBell,
   cilCalculator,
+  cilCalendar,
   cilChartPie,
   cilCursor,
   cilDescription,
@@ -161,6 +162,34 @@ const _nav = [
         component: CNavItem,
         name: 'Pacientes',
         to: '/pacientes/pacientes',
+      },
+    ],
+  },
+
+  {
+    component: CNavTitle,
+    name: 'Pantalla de Agenda',
+  },
+  {
+    component: CNavGroup,
+    name: 'Agenda',
+    to: '/agenda',
+    icon: <CIcon icon={cilCalendar} customClassName="nav-icon" />,
+    items: [
+      {
+        component: CNavItem,
+        name: 'Horarios Médicos',
+        to: '/agenda/horarios-medicos',
+      },
+      {
+        component: CNavItem,
+        name: 'Bloqueo de Agenda',
+        to: '/agenda/bloqueo-agenda',
+      },
+      {
+        component: CNavItem,
+        name: 'Tipos de Bloqueo',
+        to: '/agenda/tipos-bloqueo',
       },
     ],
   },
