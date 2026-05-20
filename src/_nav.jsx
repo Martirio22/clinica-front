@@ -147,6 +147,24 @@ const _nav = [
     ],
   },
 
+  {
+    component: CNavTitle,
+    name: 'Pacientes',
+  },
+  {
+    component: CNavGroup,
+    name: 'Gestión de Pacientes',
+    to: '/pacientes',
+    icon: <CIcon icon={cilNotes} customClassName="nav-icon" />,
+    items: [
+      {
+        component: CNavItem,
+        name: 'Pacientes',
+        to: '/pacientes/pacientes',
+      },
+    ],
+  },
+
 
 
 
