@@ -196,8 +196,102 @@ const _nav = [
         name: 'Calendario General de Citas',
         to: '/agenda/calendario-citas',
       },
+      {
+        component: CNavItem,
+        name: 'Crear Cita Médica',
+        to: '/agenda/crear-cita-medica',
+      },
+      {
+        component: CNavItem,
+        name: 'Estados de Cita',
+        to: '/agenda/estados-cita',
+      },
     ],
   },
+
+  {
+    component: CNavTitle,
+    name: 'Autorizaciones',
+  },
+  {
+    component: CNavGroup,
+    name: 'Atención',
+    to: '/autorizaciones',
+    icon: <CIcon icon={cilNotes} customClassName="nav-icon" />,
+    items: [
+      {
+        component: CNavItem,
+        name: 'Autorización de Atención',
+        to: '/autorizaciones/autorizacion-atencion',
+      },
+    ],
+  },
+
+  {
+    component: CNavTitle,
+    name: 'Pantalla del Médico',
+  },
+  {
+    component: CNavGroup,
+    name: 'Médico',
+    to: '/medico',
+    icon: <CIcon icon={cilNotes} customClassName="nav-icon" />,
+    items: [
+      {
+        component: CNavItem,
+        name: 'Dashboard del Médico',
+        to: '/medico/dashboard',
+      },
+      {
+        component: CNavItem,
+        name: 'Mi Calendario',
+        to: '/medico/mi-calendario',
+      },
+      {
+        component: CNavItem,
+        name: 'Atención Médica',
+        to: '/medico/atencion-medica',
+      },
+      {
+        component: CNavItem,
+        name: 'Recetas Médicas',
+        to: '/medico/recetas-medicas',
+      },
+    ],
+  },
+
+  {
+    component: CNavTitle,
+    name: 'Asistente Clínico',
+  },
+  {
+    component: CNavGroup,
+    name: 'Asistente',
+    to: '/asistente-clinico',
+    icon: <CIcon icon={cilNotes} customClassName="nav-icon" />,
+    items: [
+      {
+        component: CNavItem,
+        name: 'Dashboard Asistente',
+        to: '/asistente-clinico/dashboard',
+      },
+      {
+        component: CNavItem,
+        name: 'Bandeja de Chats',
+        to: '/asistente-clinico/bandeja-chats',
+      },
+      {
+        component: CNavItem,
+        name: 'Autorización de Atención',
+        to: '/asistente-clinico/autorizacion-atencion',
+      },
+    ],
+  },
+
+
+
+
+
 
 
 

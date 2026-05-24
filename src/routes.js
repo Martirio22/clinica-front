@@ -27,6 +27,17 @@ import HorariosMedicos from './views/system/agenda/HorariosMedicos'
 import BloqueoAgenda from './views/system/agenda/BloqueoAgenda'
 import TiposBloqueo from './views/system/agenda/TiposBloqueo'
 import CalendarioCitas from './views/system/agenda/CalendarioCitas'
+import CrearCitaMedica from './views/system/agenda/CrearCitaMedica'
+import EstadosCita from './views/system/agenda/EstadosCita'
+import AutorizacionAtencion from './views/system/autorizaciones/AutorizacionAtencion'
+import DashboardMedico from './views/system/medico/DashboardMedico'
+import MiCalendario from './views/system/medico/MiCalendario'
+import AtencionMedica from './views/system/medico/AtencionMedica'
+import RecetasMedicas from './views/system/medico/RecetasMedicas'
+import DashboardAsistente from './views/system/asistenteClinico/DashboardAsistente'
+import BandejaChats from './views/system/asistenteClinico/BandejaChats'
+import ChatEnVivo from './views/system/asistenteClinico/ChatEnVivo'
+import AutorizacionAtencionAsistente from './views/system/asistenteClinico/AutorizacionAtencionAsistente'
 
 // Dashboard
 const Dashboard = React.lazy(() => import('./views/dashboard/Dashboard'))
@@ -124,6 +135,70 @@ export const routes = [
   { path: '/agenda/bloqueo-agenda', name: 'Bloqueo de Agenda', element: BloqueoAgenda },
   { path: '/agenda/tipos-bloqueo', name: 'Tipos de Bloqueo', element: TiposBloqueo },
   { path: '/agenda/calendario-citas', name: 'Calendario General de Citas', element: CalendarioCitas },
+  { path: '/agenda/crear-cita-medica', name: 'Crear Cita Médica', element: CrearCitaMedica },
+  { path: '/agenda/estados-cita', name: 'Estados de Cita', element: EstadosCita },
+
+  { path: '/autorizaciones', name: 'Autorizaciones', exact: true },
+  {
+    path: '/autorizaciones/autorizacion-atencion',
+    name: 'Autorización de Atención',
+    element: AutorizacionAtencion,
+  },
+
+  { path: '/medico', name: 'Pantalla del Médico', exact: true },
+  {
+    path: '/medico/dashboard',
+    name: 'Dashboard del Médico',
+    element: DashboardMedico,
+  },
+  {
+    path: '/medico/mi-calendario',
+    name: 'Mi Calendario',
+    element: MiCalendario,
+  },
+  {
+    path: '/medico/atencion-medica',
+    name: 'Atención Médica',
+    element: AtencionMedica,
+  },
+  {
+    path: '/medico/atencion-medica/:appointmentId',
+    name: 'Atención Médica',
+    element: AtencionMedica,
+  },
+  {
+    path: '/medico/recetas-medicas',
+    name: 'Recetas Médicas',
+    element: RecetasMedicas,
+  },
+
+  { path: '/asistente-clinico', name: 'Asistente Clínico', exact: true },
+  {
+    path: '/asistente-clinico/dashboard',
+    name: 'Dashboard Asistente',
+    element: DashboardAsistente,
+  },
+  {
+    path: '/asistente-clinico/bandeja-chats',
+    name: 'Bandeja de Chats',
+    element: BandejaChats,
+  },
+  {
+    path: '/asistente-clinico/chat-en-vivo/:sessionId',
+    name: 'Chat en Vivo',
+    element: ChatEnVivo,
+  },
+  {
+    path: '/asistente-clinico/autorizacion-atencion',
+    name: 'Autorización de Atención',
+    element: AutorizacionAtencionAsistente,
+  },
+
+
+
+
+
+
 
 
 

@@ -25,7 +25,7 @@ import {
   CTableRow,
 } from '@coreui/react'
 
-import { scheduleBlockTypeService } from '../../../services/scheduleBlockTypeService'
+import { appointmentStatusService } from '../../../services/appointmentStatusService'
 
 const initialForm = {
   code: '',
@@ -34,13 +34,12 @@ const initialForm = {
   isActive: true,
 }
 
-const TiposBloqueo = () => {
-  const [tiposBloqueo, setTiposBloqueo] = useState([])
+const EstadosCita = () => {
+  const [estados, setEstados] = useState([])
   const [form, setForm] = useState(initialForm)
-  const [editingType, setEditingType] = useState(null)
+  const [editingStatus, setEditingStatus] = useState(null)
 
   const [search, setSearch] = useState('')
-
   const [visible, setVisible] = useState(false)
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -49,41 +48,41 @@ const TiposBloqueo = () => {
   const [modalError, setModalError] = useState('')
   const [success, setSuccess] = useState('')
 
-  const cargarTiposBloqueo = async () => {
+  const cargarEstados = async () => {
     try {
       setLoading(true)
       setError('')
 
-      const data = await scheduleBlockTypeService.listar()
-      setTiposBloqueo(data || [])
+      const data = await appointmentStatusService.listar()
+      setEstados(data || [])
     } catch (err) {
       console.error(err)
-      setError('No se pudieron cargar los tipos de bloqueo.')
+      setError('No se pudieron cargar los estados de cita.')
     } finally {
       setLoading(false)
     }
   }
 
   useEffect(() => {
-    cargarTiposBloqueo()
+    cargarEstados()
   }, [])
 
-  const tiposFiltrados = useMemo(() => {
+  const estadosFiltrados = useMemo(() => {
     const texto = String(search || '').toLowerCase().trim()
 
-    if (!texto) return tiposBloqueo
+    if (!texto) return estados
 
-    return tiposBloqueo.filter((type) => {
-      const code = String(type.code || '').toLowerCase()
-      const name = String(type.name || '').toLowerCase()
-      const description = String(type.description || '').toLowerCase()
+    return estados.filter((status) => {
+      const code = String(status.code || '').toLowerCase()
+      const name = String(status.name || '').toLowerCase()
+      const description = String(status.description || '').toLowerCase()
 
       return code.includes(texto) || name.includes(texto) || description.includes(texto)
     })
-  }, [tiposBloqueo, search])
+  }, [estados, search])
 
   const abrirModalCrear = () => {
-    setEditingType(null)
+    setEditingStatus(null)
     setForm(initialForm)
     setError('')
     setModalError('')
@@ -91,14 +90,14 @@ const TiposBloqueo = () => {
     setVisible(true)
   }
 
-  const abrirModalEditar = (type) => {
-    setEditingType(type)
+  const abrirModalEditar = (status) => {
+    setEditingStatus(status)
 
     setForm({
-      code: type.code || '',
-      name: type.name || '',
-      description: type.description || '',
-      isActive: type.isActive ?? true,
+      code: status.code || '',
+      name: status.name || '',
+      description: status.description || '',
+      isActive: status.isActive ?? true,
     })
 
     setError('')
@@ -109,7 +108,7 @@ const TiposBloqueo = () => {
 
   const cerrarModal = () => {
     setVisible(false)
-    setEditingType(null)
+    setEditingStatus(null)
     setForm(initialForm)
     setModalError('')
   }
@@ -131,13 +130,13 @@ const TiposBloqueo = () => {
   }
 
   const validarFormulario = () => {
-    if (!String(form.code || '').trim()) return 'El código del tipo de bloqueo es requerido.'
-    if (!String(form.name || '').trim()) return 'El nombre del tipo de bloqueo es requerido.'
+    if (!String(form.code || '').trim()) return 'El código del estado es requerido.'
+    if (!String(form.name || '').trim()) return 'El nombre del estado es requerido.'
 
     return ''
   }
 
-  const guardarTipoBloqueo = async () => {
+  const guardarEstado = async () => {
     try {
       const mensajeValidacion = validarFormulario()
 
@@ -157,26 +156,26 @@ const TiposBloqueo = () => {
         isActive: form.isActive,
       }
 
-      if (editingType) {
-        await scheduleBlockTypeService.actualizar(editingType.id, payload)
-        setSuccess('Tipo de bloqueo actualizado correctamente.')
+      if (editingStatus) {
+        await appointmentStatusService.actualizar(editingStatus.id, payload)
+        setSuccess('Estado de cita actualizado correctamente.')
       } else {
-        await scheduleBlockTypeService.crear(payload)
-        setSuccess('Tipo de bloqueo creado correctamente.')
+        await appointmentStatusService.crear(payload)
+        setSuccess('Estado de cita creado correctamente.')
       }
 
       cerrarModal()
-      await cargarTiposBloqueo()
+      await cargarEstados()
     } catch (err) {
       console.error(err)
-      setModalError(err?.message || 'Ocurrió un error al guardar el tipo de bloqueo.')
+      setModalError(err?.data?.message || err?.message || 'Ocurrió un error al guardar el estado.')
     } finally {
       setSaving(false)
     }
   }
 
-  const eliminarTipoBloqueo = async (type) => {
-    const confirmar = window.confirm(`¿Seguro que deseas inactivar el tipo de bloqueo ${type.name}?`)
+  const eliminarEstado = async (status) => {
+    const confirmar = window.confirm(`¿Seguro que deseas inactivar el estado ${status.name}?`)
 
     if (!confirmar) return
 
@@ -185,44 +184,64 @@ const TiposBloqueo = () => {
       setError('')
       setSuccess('')
 
-      await scheduleBlockTypeService.eliminar(type.id)
+      await appointmentStatusService.eliminar(status.id)
 
-      setSuccess('Tipo de bloqueo inactivado correctamente.')
-      await cargarTiposBloqueo()
+      setSuccess('Estado de cita inactivado correctamente.')
+      await cargarEstados()
     } catch (err) {
       console.error(err)
-      setError('No se pudo inactivar el tipo de bloqueo.')
+      setError(err?.data?.message || err?.message || 'No se pudo inactivar el estado de cita.')
     } finally {
       setLoading(false)
     }
   }
 
-  const crearTiposBloqueoBase = async () => {
-    const blocks = [
+  const crearEstadosBase = async () => {
+    const estadosBase = [
       {
-        code: 'VACACION',
-        name: 'Vacaciones',
-        description: 'Bloqueo por vacaciones',
+        code: 'RESERVADA',
+        name: 'Pendiente',
+        description: 'Cita reservada',
       },
       {
-        code: 'ALMUERZO',
-        name: 'Almuerzo',
-        description: 'Horario de almuerzo',
+        code: 'CONFIRMADA',
+        name: 'Confirmada',
+        description: 'Cita confirmada por el paciente',
       },
       {
-        code: 'REUNION',
-        name: 'Reunión',
-        description: 'Reuniones internas',
+        code: 'EN_ESPERA',
+        name: 'En espera',
+        description: 'Cita en espera',
       },
       {
-        code: 'PERSONAL',
-        name: 'Asunto personal',
-        description: 'Motivos personales',
+        code: 'CANCELADA',
+        name: 'Cancelada',
+        description: 'Cita cancelada',
       },
       {
-        code: 'MANTENIMIENTO',
-        name: 'Mantenimiento',
-        description: 'Bloqueo por mantenimiento',
+        code: 'COMPLETADA',
+        name: 'Completada',
+        description: 'Cita atendida correctamente',
+      },
+      {
+        code: 'ATENDIDA',
+        name: 'ATENDIDA',
+        description: 'La cita ya fue atentida',
+      },
+      {
+        code: 'NO_ASISTIO',
+        name: 'No asistió',
+        description: 'El paciente no se presentó',
+      },
+      {
+        code: 'REPROGRAMADA',
+        name: 'Reprogramada',
+        description: 'La cita fue reprogramada',
+      },
+      {
+        code: 'EXPIRADA',
+        name: 'Expirada',
+        description: 'La cita fue expirada',
       },
     ]
 
@@ -231,22 +250,22 @@ const TiposBloqueo = () => {
       setError('')
       setSuccess('')
 
-      for (const block of blocks) {
-        const yaExiste = tiposBloqueo.some((item) => item.code === block.code)
+      for (const estado of estadosBase) {
+        const yaExiste = estados.some((item) => item.code === estado.code)
 
         if (!yaExiste) {
-          await scheduleBlockTypeService.crear({
-            ...block,
+          await appointmentStatusService.crear({
+            ...estado,
             isActive: true,
           })
         }
       }
 
-      setSuccess('Tipos de bloqueo base creados correctamente.')
-      await cargarTiposBloqueo()
+      setSuccess('Estados base creados correctamente.')
+      await cargarEstados()
     } catch (err) {
       console.error(err)
-      setError(err?.data?.message || err?.message || 'No se pudieron crear los tipos de bloqueo base.')
+      setError(err?.data?.message || err?.message || 'No se pudieron crear los estados base.')
     } finally {
       setLoading(false)
     }
@@ -256,15 +275,15 @@ const TiposBloqueo = () => {
     <>
       <CCard>
         <CCardHeader className="d-flex justify-content-between align-items-center">
-          <strong>Tipos de Bloqueo</strong>
+          <strong>Estados de Cita</strong>
 
-          <div className="d-flex gap-2">
-            <CButton color="success" variant="outline" onClick={crearTiposBloqueoBase}>
-              Crear tipos base
+          <div>
+            <CButton color="info" variant="outline" className="me-2" onClick={crearEstadosBase}>
+              Crear estados base
             </CButton>
 
             <CButton color="primary" onClick={abrirModalCrear}>
-              Nuevo tipo
+              Nuevo estado
             </CButton>
           </div>
         </CCardHeader>
@@ -284,7 +303,7 @@ const TiposBloqueo = () => {
 
           <CRow className="mb-3">
             <CCol md={5}>
-              <CFormLabel>Buscar tipo de bloqueo</CFormLabel>
+              <CFormLabel>Buscar estado</CFormLabel>
               <CFormInput
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -313,21 +332,21 @@ const TiposBloqueo = () => {
               </CTableHead>
 
               <CTableBody>
-                {tiposFiltrados.length === 0 ? (
+                {estadosFiltrados.length === 0 ? (
                   <CTableRow>
                     <CTableDataCell colSpan={6} className="text-center">
-                      No existen tipos de bloqueo registrados.
+                      No existen estados de cita registrados.
                     </CTableDataCell>
                   </CTableRow>
                 ) : (
-                  tiposFiltrados.map((type, index) => (
-                    <CTableRow key={type.id}>
+                  estadosFiltrados.map((status, index) => (
+                    <CTableRow key={status.id}>
                       <CTableHeaderCell scope="row">{index + 1}</CTableHeaderCell>
-                      <CTableDataCell>{type.code}</CTableDataCell>
-                      <CTableDataCell>{type.name}</CTableDataCell>
-                      <CTableDataCell>{type.description || '-'}</CTableDataCell>
+                      <CTableDataCell>{status.code}</CTableDataCell>
+                      <CTableDataCell>{status.name}</CTableDataCell>
+                      <CTableDataCell>{status.description || '-'}</CTableDataCell>
                       <CTableDataCell>
-                        {type.isActive ? (
+                        {status.isActive ? (
                           <CBadge color="success">Activo</CBadge>
                         ) : (
                           <CBadge color="secondary">Inactivo</CBadge>
@@ -339,7 +358,7 @@ const TiposBloqueo = () => {
                           variant="outline"
                           size="sm"
                           className="me-2"
-                          onClick={() => abrirModalEditar(type)}
+                          onClick={() => abrirModalEditar(status)}
                         >
                           Editar
                         </CButton>
@@ -348,8 +367,8 @@ const TiposBloqueo = () => {
                           color="danger"
                           variant="outline"
                           size="sm"
-                          disabled={!type.isActive}
-                          onClick={() => eliminarTipoBloqueo(type)}
+                          disabled={!status.isActive}
+                          onClick={() => eliminarEstado(status)}
                         >
                           Inactivar
                         </CButton>
@@ -365,7 +384,7 @@ const TiposBloqueo = () => {
 
       <CModal visible={visible} onClose={cerrarModal} backdrop="static">
         <CModalHeader>
-          <CModalTitle>{editingType ? 'Editar tipo de bloqueo' : 'Nuevo tipo de bloqueo'}</CModalTitle>
+          <CModalTitle>{editingStatus ? 'Editar estado de cita' : 'Nuevo estado de cita'}</CModalTitle>
         </CModalHeader>
 
         <CModalBody>
@@ -382,7 +401,7 @@ const TiposBloqueo = () => {
                 name="code"
                 value={form.code || ''}
                 onChange={handleChange}
-                placeholder="Ej: VACACION"
+                placeholder="Ej: AGENDADA"
               />
             </CCol>
 
@@ -392,7 +411,7 @@ const TiposBloqueo = () => {
                 name="name"
                 value={form.name || ''}
                 onChange={handleChange}
-                placeholder="Ej: Vacaciones"
+                placeholder="Ej: Agendada"
               />
             </CCol>
 
@@ -402,7 +421,7 @@ const TiposBloqueo = () => {
                 name="description"
                 value={form.description || ''}
                 onChange={handleChange}
-                placeholder="Ej: Bloqueo por vacaciones del médico"
+                placeholder="Ej: Cita registrada en el sistema"
               />
             </CCol>
 
@@ -421,7 +440,7 @@ const TiposBloqueo = () => {
             Cancelar
           </CButton>
 
-          <CButton color="primary" onClick={guardarTipoBloqueo} disabled={saving}>
+          <CButton color="primary" onClick={guardarEstado} disabled={saving}>
             {saving ? (
               <>
                 <CSpinner size="sm" className="me-2" />
@@ -437,4 +456,4 @@ const TiposBloqueo = () => {
   )
 }
 
-export default TiposBloqueo
+export default EstadosCita
