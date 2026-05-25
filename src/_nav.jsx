@@ -336,6 +336,11 @@ const _nav = [
         name: 'Eventos IA',
         to: '/whatsapp-bot/eventos-ia',
       },
+      {
+        component: CNavItem,
+        name: 'Estados Sesión Chat',
+        to: '/whatsapp-bot/estados-sesion-chat',
+      },
     ],
   },
 

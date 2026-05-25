@@ -44,6 +44,7 @@ import MenusBot from './views/system/whatsappBot/MenusBot'
 import OpcionesMenuBot from './views/system/whatsappBot/OpcionesMenuBot'
 import IntencionesIA from './views/system/whatsappBot/IntencionesIA'
 import EventosIA from './views/system/whatsappBot/EventosIA'
+import EstadosSesionChat from './views/system/whatsappBot/EstadosSesionChat'
 
 // Dashboard
 const Dashboard = React.lazy(() => import('./views/dashboard/Dashboard'))
@@ -232,6 +233,11 @@ export const routes = [
     path: '/whatsapp-bot/eventos-ia',
     name: 'Eventos IA',
     element: EventosIA,
+  },
+  {
+    path: '/whatsapp-bot/estados-sesion-chat',
+    name: 'Estados Sesión Chat',
+    element: EstadosSesionChat,
   },
 
 
