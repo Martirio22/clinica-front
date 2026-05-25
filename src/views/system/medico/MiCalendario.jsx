@@ -29,6 +29,7 @@ import { medicalAttentionService } from '../../../services/medicalAttentionServi
 import { scheduleBlockService } from '../../../services/scheduleBlockService'
 import { scheduleBlockTypeService } from '../../../services/scheduleBlockTypeService'
 import { attentionStatusService } from '../../../services/attentionStatusService'
+import { doctorService } from '../../../services/doctorService' // Asegúrate de importar el servicio de médicos
 
 const MiCalendario = () => {
   const navigate = useNavigate()
@@ -45,6 +46,10 @@ const MiCalendario = () => {
   const [mensaje, setMensaje] = useState(null)
   const [error, setError] = useState(null)
 
+  // === ESTADO PARA EL MÉDICO LOGUEADO ===
+  const [medicoLogueadoId, setMedicoLogueadoId] = useState('')
+  const [nombreMedico, setNombreMedico] = useState('')
+
   const [modalCita, setModalCita] = useState(false)
   const [citaSeleccionada, setCitaSeleccionada] = useState(null)
   const [autorizacionCita, setAutorizacionCita] = useState(null)
@@ -58,11 +63,28 @@ const MiCalendario = () => {
     reason: '',
   })
 
-  const doctorIdActual =
-    localStorage.getItem('doctorId') ||
-    localStorage.getItem('currentDoctorId') ||
-    localStorage.getItem('medicoId') ||
-    ''
+  // === RESOLVER Y VINCULAR PERFIL DEL MÉDICO ===
+  const obtenerPerfilMedicoLogueado = async () => {
+    const storedUser = localStorage.getItem('user') || sessionStorage.getItem('user')
+    if (!storedUser) return
+
+    try {
+      const loggedUser = JSON.parse(storedUser)
+      const dataMedicos = await doctorService.listar()
+      
+      const medicoAsociado = dataMedicos?.find(
+        (doc) => doc.userId === loggedUser.id || doc.user?.id === loggedUser.id
+      )
+
+      if (medicoAsociado) {
+        console.log("=== CALENDARIO: Vinculado al médico ===", medicoAsociado)
+        setMedicoLogueadoId(medicoAsociado.id)
+        setNombreMedico(`${loggedUser.firstName || ''} ${loggedUser.lastName || ''}`.trim())
+      }
+    } catch (err) {
+      console.error("Error resolviendo perfil del médico en calendario", err)
+    }
+  }
 
   const formatDateInput = (date) => {
     const year = date.getFullYear()
@@ -120,6 +142,9 @@ const MiCalendario = () => {
   const rangoVista = useMemo(() => obtenerRangoVista(), [fechaActual, vista])
 
   const cargarDatos = async () => {
+    // Si todavía no se ha determinado el ID del médico logueado, esperamos para evitar traer basura
+    if (!medicoLogueadoId) return
+
     try {
       setLoading(true)
       setError(null)
@@ -128,10 +153,7 @@ const MiCalendario = () => {
       const filters = {
         startDate: rangoVista.start.toISOString(),
         endDate: rangoVista.end.toISOString(),
-      }
-
-      if (doctorIdActual) {
-        filters.doctorId = doctorIdActual
+        doctorId: medicoLogueadoId // Filtro obligatorio e inalterable
       }
 
       const [citasData, tiposData, estadosData] = await Promise.all([
@@ -144,12 +166,9 @@ const MiCalendario = () => {
       setTiposBloqueo(tiposData || [])
       setEstadosAtencion(estadosData || [])
 
-      if (doctorIdActual) {
-        const bloqueosData = await scheduleBlockService.listarPorDoctor(doctorIdActual)
-        setBloqueos(bloqueosData || [])
-      } else {
-        setBloqueos([])
-      }
+      const bloqueosData = await scheduleBlockService.listarPorDoctor(medicoLogueadoId)
+      setBloqueos(bloqueosData || [])
+
     } catch (err) {
       console.error(err)
       setError(err.message || 'Error al cargar el calendario')
@@ -158,9 +177,15 @@ const MiCalendario = () => {
     }
   }
 
+  // hook inicial para buscar el médico logueado primero
+  useEffect(() => {
+    obtenerPerfilMedicoLogueado()
+  }, [])
+
+  // Recargar el calendario si cambia la vista, la fecha o cuando por fin se asigne el médico logueado
   useEffect(() => {
     cargarDatos()
-  }, [vista, fechaActual])
+  }, [vista, fechaActual, medicoLogueadoId])
 
   const cambiarFecha = (direction) => {
     const nuevaFecha = new Date(fechaActual)
@@ -247,7 +272,7 @@ const MiCalendario = () => {
     const fin = cita?.endDate ? new Date(cita.endDate) : new Date(inicio.getTime() + 30 * 60000)
 
     setFormBloqueo({
-      doctorId: cita?.doctorId || doctorIdActual || '',
+      doctorId: medicoLogueadoId, // Se asigna automáticamente el logueado siempre
       blockingTypeId: '',
       startDate: formatDateTimeLocal(inicio),
       endDate: formatDateTimeLocal(fin),
@@ -264,7 +289,7 @@ const MiCalendario = () => {
       setMensaje(null)
 
       if (!formBloqueo.doctorId) {
-        setError('Debe seleccionar o tener asignado un médico')
+        setError('Debe tener asignado un médico')
         return
       }
 
@@ -349,7 +374,6 @@ const MiCalendario = () => {
 
   const verPaciente = (patientId) => {
     if (!patientId) return
-
     navigate(`/pacientes/perfil/${patientId}`)
   }
 
@@ -357,7 +381,6 @@ const MiCalendario = () => {
     if (cita?.patient) {
       return `${cita.patient.firstName || ''} ${cita.patient.lastName || ''}`.trim()
     }
-
     return cita?.patientName || 'Paciente'
   }
 
@@ -365,9 +388,7 @@ const MiCalendario = () => {
     if (cita?.doctor?.user) {
       return `${cita.doctor.user.firstName || ''} ${cita.doctor.user.lastName || ''}`.trim()
     }
-
     if (cita?.doctorName) return cita.doctorName
-
     return 'Médico'
   }
 
@@ -377,30 +398,18 @@ const MiCalendario = () => {
 
   const formatHora = (dateValue) => {
     if (!dateValue) return '-'
-
     const date = new Date(dateValue)
-
-    return date.toLocaleTimeString('es-EC', {
-      hour: '2-digit',
-      minute: '2-digit',
-    })
+    return date.toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit' })
   }
 
   const formatFecha = (dateValue) => {
     if (!dateValue) return '-'
-
     const date = new Date(dateValue)
-
-    return date.toLocaleDateString('es-EC', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    })
+    return date.toLocaleDateString('es-EC', { year: 'numeric', month: '2-digit', day: '2-digit' })
   }
 
   const citasDelDia = (date) => {
     const fecha = formatDateInput(date)
-
     return citas.filter((cita) => {
       const citaFecha = formatDateInput(new Date(cita.startDate))
       return citaFecha === fecha
@@ -409,7 +418,6 @@ const MiCalendario = () => {
 
   const bloqueosDelDia = (date) => {
     const fecha = formatDateInput(date)
-
     return bloqueos.filter((bloqueo) => {
       const bloqueoFecha = formatDateInput(new Date(bloqueo.startDate))
       return bloqueoFecha === fecha
@@ -418,7 +426,6 @@ const MiCalendario = () => {
 
   const diasSemana = useMemo(() => {
     const start = new Date(rangoVista.start)
-
     return Array.from({ length: 7 }, (_, index) => {
       const date = new Date(start)
       date.setDate(start.getDate() + index)
@@ -458,7 +465,6 @@ const MiCalendario = () => {
           <div>{getNombrePaciente(cita)}</div>
           <small className="text-body-secondary">{cita.reason || 'Sin motivo registrado'}</small>
         </div>
-
         <CBadge color="info">{getNombreEstado(cita)}</CBadge>
       </div>
 
@@ -466,24 +472,15 @@ const MiCalendario = () => {
         <CButton size="sm" color="primary" variant="outline" onClick={() => abrirDetalleCita(cita)}>
           Ver cita
         </CButton>
-
-        <CButton
-          size="sm"
-          color="success"
-          variant="outline"
-          onClick={() => navigate(`/medico/atencion-medica/${cita.id}`)}
-        >
+        <CButton size="sm" color="success" variant="outline" onClick={() => navigate(`/medico/atencion-medica/${cita.id}`)}>
           Iniciar atención
         </CButton>
-
         <CButton size="sm" color="warning" variant="outline" onClick={() => abrirModalBloqueo(cita)}>
           Bloquear horario
         </CButton>
-
         <CButton size="sm" color="danger" variant="outline" onClick={() => registrarAusencia(cita)}>
           Registrar ausencia
         </CButton>
-
         <CButton size="sm" color="secondary" variant="outline" onClick={() => verPaciente(cita.patientId)}>
           Ver paciente
         </CButton>
@@ -499,7 +496,6 @@ const MiCalendario = () => {
           <div>{bloqueo.blockingType?.name || bloqueo.blockingTypeName || 'Bloqueo'}</div>
           <small className="text-body-secondary">{bloqueo.reason || 'Sin motivo'}</small>
         </div>
-
         <CButton size="sm" color="danger" variant="outline" onClick={() => cancelarBloqueo(bloqueo.id)}>
           Cancelar bloqueo
         </CButton>
@@ -520,14 +516,12 @@ const MiCalendario = () => {
           {citasDia.length === 0 && bloqueosDia.length === 0 && (
             <div className="text-body-secondary">No hay citas ni bloqueos para este día.</div>
           )}
-
           {bloqueosDia.length > 0 && (
             <>
               <h6>Bloqueos</h6>
               {bloqueosDia.map(renderBloqueoCard)}
             </>
           )}
-
           {citasDia.length > 0 && (
             <>
               <h6 className="mt-3">Citas</h6>
@@ -556,7 +550,6 @@ const MiCalendario = () => {
                 {citasDia.length === 0 && bloqueosDia.length === 0 && (
                   <div className="text-body-secondary small">Sin registros</div>
                 )}
-
                 {bloqueosDia.map(renderBloqueoCard)}
                 {citasDia.map(renderCitaCard)}
               </CCardBody>
@@ -588,7 +581,6 @@ const MiCalendario = () => {
             >
               <div className="d-flex justify-content-between">
                 <strong>{date.getDate()}</strong>
-
                 {(citasDia.length > 0 || bloqueosDia.length > 0) && (
                   <CBadge color="primary">
                     {citasDia.length + bloqueosDia.length}
@@ -602,7 +594,6 @@ const MiCalendario = () => {
                     {formatHora(bloqueo.startDate)} Bloqueo
                   </div>
                 ))}
-
                 {citasDia.slice(0, 3).map((cita) => (
                   <button
                     key={cita.id}
@@ -613,7 +604,6 @@ const MiCalendario = () => {
                     {formatHora(cita.startDate)} {getNombrePaciente(cita)}
                   </button>
                 ))}
-
                 {citasDia.length + bloqueosDia.length > 3 && (
                   <small className="text-body-secondary">
                     +{citasDia.length + bloqueosDia.length - 3} más
@@ -633,52 +623,28 @@ const MiCalendario = () => {
         <CCardHeader className="d-flex flex-wrap justify-content-between align-items-center gap-2">
           <div>
             <h5 className="mb-0">Mi Calendario</h5>
-            <small className="text-body-secondary">Citas, autorizaciones, bloqueos y atención médica</small>
+            {nombreMedico && (
+              <small className="text-primary fw-semibold">Dr(a). {nombreMedico}</small>
+            )}
           </div>
 
           <div className="d-flex flex-wrap gap-2">
-            <CButton color="secondary" variant="outline" onClick={() => cambiarFecha(-1)}>
-              Anterior
-            </CButton>
-
-            <CButton color="secondary" variant="outline" onClick={irHoy}>
-              Hoy
-            </CButton>
-
-            <CButton color="secondary" variant="outline" onClick={() => cambiarFecha(1)}>
-              Siguiente
-            </CButton>
-
-            <CButton color="warning" onClick={() => abrirModalBloqueo()}>
-              Bloquear horario
-            </CButton>
+            <CButton color="secondary" variant="outline" onClick={() => cambiarFecha(-1)}>Anterior</CButton>
+            <CButton color="secondary" variant="outline" onClick={irHoy}>Hoy</CButton>
+            <CButton color="secondary" variant="outline" onClick={() => cambiarFecha(1)}>Siguiente</CButton>
+            <CButton color="warning" onClick={() => abrirModalBloqueo()}>Bloquear horario</CButton>
           </div>
         </CCardHeader>
 
         <CCardBody>
-          {error && (
-            <CAlert color="danger" dismissible onClose={() => setError(null)}>
-              {error}
-            </CAlert>
-          )}
-
-          {mensaje && (
-            <CAlert color="success" dismissible onClose={() => setMensaje(null)}>
-              {mensaje}
-            </CAlert>
-          )}
+          {error && <CAlert color="danger" dismissible onClose={() => setError(null)}>{error}</CAlert>}
+          {mensaje && <CAlert color="success" dismissible onClose={() => setMensaje(null)}>{mensaje}</CAlert>}
 
           <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
             <CButtonGroup>
-              <CButton color={vista === 'day' ? 'primary' : 'secondary'} variant={vista === 'day' ? undefined : 'outline'} onClick={() => setVista('day')}>
-                Día
-              </CButton>
-              <CButton color={vista === 'week' ? 'primary' : 'secondary'} variant={vista === 'week' ? undefined : 'outline'} onClick={() => setVista('week')}>
-                Semana
-              </CButton>
-              <CButton color={vista === 'month' ? 'primary' : 'secondary'} variant={vista === 'month' ? undefined : 'outline'} onClick={() => setVista('month')}>
-                Mes
-              </CButton>
+              <CButton color={vista === 'day' ? 'primary' : 'secondary'} variant={vista === 'day' ? undefined : 'outline'} onClick={() => setVista('day')}>Día</CButton>
+              <CButton color={vista === 'week' ? 'primary' : 'secondary'} variant={vista === 'week' ? undefined : 'outline'} onClick={() => setVista('week')}>Semana</CButton>
+              <CButton color={vista === 'month' ? 'primary' : 'secondary'} variant={vista === 'month' ? undefined : 'outline'} onClick={() => setVista('month')}>Mes</CButton>
             </CButtonGroup>
 
             <div className="fw-bold">
@@ -703,68 +669,26 @@ const MiCalendario = () => {
         </CCardBody>
       </CCard>
 
+      {/* MODAL DETALLE DE CITA */}
       <CModal visible={modalCita} onClose={() => setModalCita(false)} size="lg">
-        <CModalHeader>
-          <CModalTitle>Detalle de cita</CModalTitle>
-        </CModalHeader>
-
+        <CModalHeader><CModalTitle>Detalle de cita</CModalTitle></CModalHeader>
         <CModalBody>
           {citaSeleccionada && (
             <>
               <CRow className="mb-3">
-                <CCol md={6}>
-                  <strong>Paciente:</strong>
-                  <div>{getNombrePaciente(citaSeleccionada)}</div>
-                </CCol>
-
-                <CCol md={6}>
-                  <strong>Médico:</strong>
-                  <div>{getNombreDoctor(citaSeleccionada)}</div>
-                </CCol>
+                <CCol md={6}><strong>Paciente:</strong><div>{getNombrePaciente(citaSeleccionada)}</div></CCol>
+                <CCol md={6}><strong>Médico:</strong><div>{getNombreDoctor(citaSeleccionada)}</div></CCol>
               </CRow>
-
               <CRow className="mb-3">
-                <CCol md={6}>
-                  <strong>Fecha:</strong>
-                  <div>{formatFecha(citaSeleccionada.startDate)}</div>
-                </CCol>
-
-                <CCol md={6}>
-                  <strong>Horario:</strong>
-                  <div>{formatHora(citaSeleccionada.startDate)} - {formatHora(citaSeleccionada.endDate)}</div>
-                </CCol>
+                <CCol md={6}><strong>Fecha:</strong><div>{formatFecha(citaSeleccionada.startDate)}</div></CCol>
+                <CCol md={6}><strong>Horario:</strong><div>{formatHora(citaSeleccionada.startDate)} - {formatHora(citaSeleccionada.endDate)}</div></CCol>
               </CRow>
-
               <CRow className="mb-3">
-                <CCol md={6}>
-                  <strong>Estado:</strong>
-                  <div>
-                    <CBadge color="info">{getNombreEstado(citaSeleccionada)}</CBadge>
-                  </div>
-                </CCol>
-
-                <CCol md={6}>
-                  <strong>Autorización:</strong>
-                  <div>
-                    {autorizacionCita?.isAuthorized ? (
-                      <CBadge color="success">Paciente autorizado</CBadge>
-                    ) : (
-                      <CBadge color="warning">No autorizado / pendiente</CBadge>
-                    )}
-                  </div>
-                </CCol>
+                <CCol md={6}><strong>Estado:</strong><div><CBadge color="info">{getNombreEstado(citaSeleccionada)}</CBadge></div></CCol>
+                <CCol md={6}><strong>Autorización:</strong><div>{autorizacionCita?.isAuthorized ? <CBadge color="success">Paciente autorizado</CBadge> : <CBadge color="warning">No autorizado / pendiente</CBadge>}</div></CCol>
               </CRow>
-
-              <div className="mb-3">
-                <strong>Motivo:</strong>
-                <div>{citaSeleccionada.reason || 'Sin motivo registrado'}</div>
-              </div>
-
-              <div className="mb-3">
-                <strong>Observación:</strong>
-                <div>{citaSeleccionada.observation || 'Sin observaciones'}</div>
-              </div>
-
+              <div className="mb-3"><strong>Motivo:</strong><div>{citaSeleccionada.reason || 'Sin motivo registrado'}</div></div>
+              <div className="mb-3"><strong>Observación:</strong><div>{citaSeleccionada.observation || 'Sin observaciones'}</div></div>
               {autorizacionCita && (
                 <div className="border rounded p-3 bg-light">
                   <strong>Detalle de autorización</strong>
@@ -776,98 +700,49 @@ const MiCalendario = () => {
             </>
           )}
         </CModalBody>
-
         <CModalFooter>
-          <CButton color="secondary" variant="outline" onClick={() => setModalCita(false)}>
-            Cerrar
-          </CButton>
-
-          <CButton color="secondary" onClick={() => verPaciente(citaSeleccionada?.patientId)}>
-            Ver paciente
-          </CButton>
-
-          <CButton color="warning" onClick={() => abrirModalBloqueo(citaSeleccionada)}>
-            Bloquear horario
-          </CButton>
-
-          <CButton
-            color="success"
-            onClick={() => navigate(`/medico/atencion-medica/${citaSeleccionada.id}`)}
-          >
-            Iniciar atención
-          </CButton>
+          <CButton color="secondary" variant="outline" onClick={() => setModalCita(false)}>Cerrar</CButton>
+          <CButton color="secondary" onClick={() => verPaciente(citaSeleccionada?.patientId)}>Ver paciente</CButton>
+          <CButton color="warning" onClick={() => abrirModalBloqueo(citaSeleccionada)}>Bloquear horario</CButton>
+          <CButton color="success" onClick={() => navigate(`/medico/atencion-medica/${citaSeleccionada.id}`)}>Iniciar atención</CButton>
         </CModalFooter>
       </CModal>
 
+      {/* MODAL CREAR BLOQUEO */}
       <CModal visible={modalBloqueo} onClose={() => setModalBloqueo(false)}>
-        <CModalHeader>
-          <CModalTitle>Bloquear horario</CModalTitle>
-        </CModalHeader>
-
+        <CModalHeader><CModalTitle>Bloquear horario</CModalTitle></CModalHeader>
         <CModalBody>
           <CForm>
+            {/* ELIMINADO / OCULTADO EL INPUT DEL ID DEL MÉDICO POR SEGURIDAD Y UX */}
             <div className="mb-3">
-              <CFormLabel>Médico</CFormLabel>
-              <CFormInput
-                value={formBloqueo.doctorId}
-                onChange={(e) => setFormBloqueo({ ...formBloqueo, doctorId: e.target.value })}
-                placeholder="ID del médico"
-              />
+              <CFormLabel>Médico Activo</CFormLabel>
+              <CFormInput value={nombreMedico || "Cargando profesional..."} disabled />
             </div>
 
             <div className="mb-3">
               <CFormLabel>Tipo de bloqueo</CFormLabel>
-              <CFormSelect
-                value={formBloqueo.blockingTypeId}
-                onChange={(e) => setFormBloqueo({ ...formBloqueo, blockingTypeId: e.target.value })}
-              >
+              <CFormSelect value={formBloqueo.blockingTypeId} onChange={(e) => setFormBloqueo({ ...formBloqueo, blockingTypeId: e.target.value })}>
                 <option value="">Seleccione...</option>
-                {tiposBloqueo.map((tipo) => (
-                  <option key={tipo.id} value={tipo.id}>
-                    {tipo.name}
-                  </option>
-                ))}
+                {tiposBloqueo.map((tipo) => <option key={tipo.id} value={tipo.id}>{tipo.name}</option>)}
               </CFormSelect>
             </div>
-
             <div className="mb-3">
               <CFormLabel>Fecha inicio</CFormLabel>
-              <CFormInput
-                type="datetime-local"
-                value={formBloqueo.startDate}
-                onChange={(e) => setFormBloqueo({ ...formBloqueo, startDate: e.target.value })}
-              />
+              <CFormInput type="datetime-local" value={formBloqueo.startDate} onChange={(e) => setFormBloqueo({ ...formBloqueo, startDate: e.target.value })} />
             </div>
-
             <div className="mb-3">
               <CFormLabel>Fecha fin</CFormLabel>
-              <CFormInput
-                type="datetime-local"
-                value={formBloqueo.endDate}
-                onChange={(e) => setFormBloqueo({ ...formBloqueo, endDate: e.target.value })}
-              />
+              <CFormInput type="datetime-local" value={formBloqueo.endDate} onChange={(e) => setFormBloqueo({ ...formBloqueo, endDate: e.target.value })} />
             </div>
-
             <div className="mb-3">
               <CFormLabel>Motivo</CFormLabel>
-              <CFormTextarea
-                rows={3}
-                value={formBloqueo.reason}
-                onChange={(e) => setFormBloqueo({ ...formBloqueo, reason: e.target.value })}
-                placeholder="Motivo del bloqueo"
-              />
+              <CFormTextarea rows={3} value={formBloqueo.reason} onChange={(e) => setFormBloqueo({ ...formBloqueo, reason: e.target.value })} placeholder="Motivo del bloqueo" />
             </div>
           </CForm>
         </CModalBody>
-
         <CModalFooter>
-          <CButton color="secondary" variant="outline" onClick={() => setModalBloqueo(false)}>
-            Cancelar
-          </CButton>
-
-          <CButton color="warning" onClick={guardarBloqueo}>
-            Guardar bloqueo
-          </CButton>
+          <CButton color="secondary" variant="outline" onClick={() => setModalBloqueo(false)}>Cancelar</CButton>
+          <CButton color="warning" onClick={guardarBloqueo}>Guardar bloqueo</CButton>
         </CModalFooter>
       </CModal>
     </>

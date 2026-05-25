@@ -10,6 +10,7 @@ import {
   CFormInput,
   CFormLabel,
   CFormSelect,
+  CFormTextarea,
   CModal,
   CModalBody,
   CModalFooter,
@@ -54,6 +55,7 @@ const initialAppointmentForm = {
   startDate: '',
   endDate: '',
   reason: '',
+  observation: '',
 }
 
 const CrearCitaMedica = () => {
@@ -424,6 +426,7 @@ const CrearCitaMedica = () => {
         doctorId: String(appointmentForm.doctorId || '').trim(),
         startDate: convertirFechaBackend(appointmentForm.startDate),
         reason: String(appointmentForm.reason || '').trim(),
+        observation: String(appointmentForm.observation || '').trim() || null,
       }
 
       console.log('Payload crear cita:', payload)
@@ -442,6 +445,7 @@ const CrearCitaMedica = () => {
         horarioInicio: appointmentForm.startDate,
         horarioFin: appointmentForm.endDate,
         motivo: appointmentForm.reason,
+        observacion: appointmentForm.observation,
       }
 
       setCitaCreada(data)
@@ -711,6 +715,22 @@ const CrearCitaMedica = () => {
                         placeholder="Ej: Consulta de control anual"
                       />
                     </CCol>
+
+                    <CCol md={12}>
+                      <CFormLabel>Observaciones adicionales (Opcional)</CFormLabel>
+                      <CFormTextarea
+                        name="observation"
+                        value={appointmentForm.observation || ''}
+                        onChange={handleAppointmentChange}
+                        rows={3}
+                        maxLength={500}
+                        placeholder="Ej: El paciente requiere asistencia en silla de ruedas / Traer exámenes previos"
+                      />
+                      <div className="text-end text-muted small">
+                        {appointmentForm.observation?.length || 0}/500 caracteres
+                      </div>
+                    </CCol>
+                    
                   </CRow>
                 </CCardBody>
               </CCard>
@@ -782,6 +802,9 @@ const CrearCitaMedica = () => {
                   </p>
                   <p>
                     <strong>Motivo:</strong> {appointmentForm.reason || '-'}
+                  </p>
+                  <p>
+                    <strong>Observación:</strong> {appointmentForm.observation || '-'}
                   </p>
 
                   {citaCreada && (
@@ -977,6 +1000,9 @@ const CrearCitaMedica = () => {
 
               <p>
                 <strong>Motivo:</strong> {resumenConfirmacion.motivo || '-'}
+              </p>
+              <p>
+                <strong>Observaciones:</strong> {resumenConfirmacion.observacion || '-'}
               </p>
             </>
           )}

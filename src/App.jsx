@@ -86,6 +86,8 @@ const App = () => {
         }
       >
         <Routes>
+          <Route path="/" element={<Navigate to="/login" replace />} />
+
           <Route element={<PublicRoute />}>
             <Route exact path="/login" name="Login Page" element={<Login />} />
             <Route exact path="/register" name="Register Page" element={<Register />} />
@@ -95,7 +97,6 @@ const App = () => {
           <Route exact path="/500" name="Page 500" element={<Page500 />} />
 
           <Route element={<ProtectedRoute />}>
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="*" name="Home" element={<DefaultLayout />} />
           </Route>
         </Routes>

@@ -48,6 +48,7 @@ const DashboardMedico = () => {
   const [recetas, setRecetas] = useState([])
 
   const [doctorId, setDoctorId] = useState('')
+  const [nombreMedicoActivo, setNombreMedicoActivo] = useState('')
 
   const [selectedAppointment, setSelectedAppointment] = useState(null)
   const [reasonConsultation, setReasonConsultation] = useState('')
@@ -62,14 +63,41 @@ const DashboardMedico = () => {
 
   const hoy = new Date().toISOString().slice(0, 10)
 
+  // === DETECCIÓN AUTOMÁTICA DEL MÉDICO LOGUEADO ===
+  const vincularMedicoLogueado = (listaMedicos) => {
+    const storedUser = localStorage.getItem('user') || sessionStorage.getItem('user')
+    if (storedUser) {
+      try {
+        const loggedUser = JSON.parse(storedUser)
+        
+        // Buscamos en la lista de médicos cuál coincide con el ID de usuario del login
+        const medicoAsociado = listaMedicos.find(
+          (doc) => doc.userId === loggedUser.id || doc.user?.id === loggedUser.id
+        )
+
+        if (medicoAsociado) {
+          console.log("=== DASHBOARD: Vinculado al médico ===", medicoAsociado)
+          setDoctorId(medicoAsociado.id)
+          
+          const nombre = `${loggedUser.firstName || ''} ${loggedUser.lastName || ''}`.trim()
+          setNombreMedicoActivo(nombre || `Registro: ${medicoAsociado.professionalRegistry}`)
+        } else {
+          // Fallback por si eres ADMIN haciendo pruebas
+          console.warn("No se encontró un perfil de médico para este usuario.")
+          if (listaMedicos.length > 0) setDoctorId(listaMedicos[0].id)
+        }
+      } catch (e) {
+        console.error("Error al procesar el usuario logueado", e)
+      }
+    }
+  }
+
   const cargarMedicos = async () => {
     try {
       const data = await doctorService.listar()
       setMedicos(data || [])
-
-      if (data?.length === 1) {
-        setDoctorId(data[0].id)
-      }
+      // Vinculamos de forma automática pasando la lista limpia
+      vincularMedicoLogueado(data || [])
     } catch (err) {
       console.error(err)
       setError('No se pudieron cargar los médicos.')
@@ -127,6 +155,9 @@ const DashboardMedico = () => {
   }
 
   const cargarCitas = async () => {
+    // Si no se ha determinado el doctorId, no consultamos todavía para evitar traer citas de otros
+    if (!doctorId) return
+
     try {
       setLoading(true)
       setError('')
@@ -134,10 +165,7 @@ const DashboardMedico = () => {
       const filtrosHoy = {
         startDate: `${hoy}T00:00:00`,
         endDate: `${hoy}T23:59:59`,
-      }
-
-      if (doctorId) {
-        filtrosHoy.doctorId = doctorId
+        doctorId: doctorId
       }
 
       const dataHoy = await appointmentService.listarConFiltros(filtrosHoy)
@@ -148,10 +176,7 @@ const DashboardMedico = () => {
       const filtrosProximas = {
         startDate: `${hoy}T00:00:00`,
         endDate: `${fechaFinProximas.toISOString().slice(0, 10)}T23:59:59`,
-      }
-
-      if (doctorId) {
-        filtrosProximas.doctorId = doctorId
+        doctorId: doctorId
       }
 
       const dataProximas = await appointmentService.listarConFiltros(filtrosProximas)
@@ -191,26 +216,8 @@ const DashboardMedico = () => {
 
   const obtenerNombrePaciente = (patientId) => {
     const patient = obtenerPaciente(patientId)
-
     if (!patient) return '-'
-
     return `${patient.firstName || ''} ${patient.lastName || ''}`.trim()
-  }
-
-  const obtenerNombreMedico = (id) => {
-    const doctor = medicos.find((item) => item.id === id)
-
-    if (!doctor) return '-'
-
-    if (doctor.user) {
-      return `${doctor.user.firstName || ''} ${doctor.user.lastName || ''}`.trim()
-    }
-
-    if (doctor.professionalRegistry) {
-      return `Médico ${doctor.professionalRegistry}`
-    }
-
-    return doctor.name || doctor.userId || '-'
   }
 
   const obtenerNombreEspecialidad = (specialtyId) => {
@@ -234,44 +241,31 @@ const DashboardMedico = () => {
 
   const obtenerColorEstado = (statusId) => {
     const code = obtenerCodigoEstado(statusId)
-
     if (code === 'RESERVADA') return 'info'
     if (code === 'CONFIRMADA') return 'success'
     if (code === 'EN_ESPERA') return 'warning'
     if (code === 'CANCELADA') return 'danger'
     if (code === 'ATENDIDA' || code === 'COMPLETADA') return 'primary'
     if (code === 'NO_ASISTIO') return 'dark'
-
     return 'secondary'
   }
 
   const formatearHora = (value) => {
     if (!value) return '-'
-
     const raw = String(value)
-
     if (raw.includes('T')) return raw.slice(11, 16)
     if (raw.includes(' ')) return raw.slice(11, 16)
-
     const date = new Date(value)
-
     if (Number.isNaN(date.getTime())) return raw
-
-    return date.toLocaleTimeString([], {
-      hour: '2-digit',
-      minute: '2-digit',
-    })
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   }
 
   const formatearFechaHora = (value) => {
     if (!value) return '-'
-
     const date = new Date(value)
-
     if (Number.isNaN(date.getTime())) {
       return String(value).replace('T', ' ')
     }
-
     return date.toLocaleString()
   }
 
@@ -284,14 +278,10 @@ const DashboardMedico = () => {
   }
 
   const atencionesDelDoctor = useMemo(() => {
-    if (!doctorId) return atenciones
-
+    if (!doctorId) return []
     const citasIdsDoctor = new Set(
-      [...citasHoy, ...proximasCitas]
-        .filter((cita) => cita.doctorId === doctorId)
-        .map((cita) => cita.id),
+      [...citasHoy, ...proximasCitas].map((cita) => cita.id)
     )
-
     return atenciones.filter((attention) => citasIdsDoctor.has(attention.appointmentId))
   }, [atenciones, citasHoy, proximasCitas, doctorId])
 
@@ -309,7 +299,6 @@ const DashboardMedico = () => {
 
   const recetasDelDoctor = useMemo(() => {
     const attentionIds = new Set(atencionesDelDoctor.map((attention) => attention.id))
-
     return recetas.filter((prescription) => attentionIds.has(prescription.medicalAttentionId))
   }, [recetas, atencionesDelDoctor])
 
@@ -324,17 +313,9 @@ const DashboardMedico = () => {
     })
   }, [citasHoy, estados])
 
-  const irMiCalendario = () => {
-    navigate('/agenda/calendario-citas')
-  }
-
-  const crearBloqueo = () => {
-    navigate('/agenda/bloqueo-agenda')
-  }
-
-  const verPaciente = (cita) => {
-    navigate(`/pacientes/perfil-paciente/${cita.patientId}`)
-  }
+  const irMiCalendario = () => navigate('/agenda/calendario-citas')
+  const crearBloqueo = () => navigate('/agenda/bloqueo-agenda')
+  const verPaciente = (cita) => navigate(`/pacientes/perfil-paciente/${cita.patientId}`)
 
   const abrirModalIniciarAtencion = (cita) => {
     setSelectedAppointment(cita)
@@ -356,7 +337,6 @@ const DashboardMedico = () => {
         setModalError('No existe una cita seleccionada.')
         return
       }
-
       if (!String(reasonConsultation || '').trim()) {
         setModalError('Debe ingresar el motivo de consulta.')
         return
@@ -390,13 +370,17 @@ const DashboardMedico = () => {
     <>
       <CCard className="mb-4">
         <CCardHeader className="d-flex justify-content-between align-items-center">
-          <strong>Dashboard Médico</strong>
+          <div>
+            <strong>Dashboard Médico</strong>
+            {nombreMedicoActivo && (
+              <span className="text-muted ms-2">| Dr(a). {nombreMedicoActivo}</span>
+            )}
+          </div>
 
           <div>
             <CButton color="info" variant="outline" className="me-2" onClick={irMiCalendario}>
               Ir a mi calendario
             </CButton>
-
             <CButton color="warning" variant="outline" onClick={crearBloqueo}>
               Crear bloqueo
             </CButton>
@@ -416,78 +400,35 @@ const DashboardMedico = () => {
             </CAlert>
           )}
 
-          <CRow className="mb-4">
-            <CCol md={4}>
-              <CFormLabel>Médico</CFormLabel>
-              <CFormSelect value={doctorId} onChange={(e) => setDoctorId(e.target.value)}>
-                <option value="">Todos los médicos</option>
-                {medicos
-                  .filter((doctor) => doctor.isActive !== false)
-                  .map((doctor) => (
-                    <option key={doctor.id} value={doctor.id}>
-                      {obtenerNombreMedico(doctor.id)}
-                    </option>
-                  ))}
-              </CFormSelect>
-            </CCol>
-          </CRow>
+          {/* === ELIMINADO EL SELECTOR MANUAL DE MÉDICOS POR SEGURIDAD === */}
 
           <CRow className="g-3 mb-4">
             <CCol md={4}>
               <CWidgetStatsA color="primary" value={String(citasHoy.length)} title="Citas de hoy" />
             </CCol>
-
             <CCol md={4}>
-              <CWidgetStatsA
-                color="warning"
-                value={String(pacientesEnEspera.length)}
-                title="Pacientes en espera"
-              />
+              <CWidgetStatsA color="warning" value={String(pacientesEnEspera.length)} title="Pacientes en espera" />
             </CCol>
-
             <CCol md={4}>
-              <CWidgetStatsA
-                color="info"
-                value={String(proximasCitas.length)}
-                title="Próximas citas"
-              />
+              <CWidgetStatsA color="info" value={String(proximasCitas.length)} title="Próximas citas" />
             </CCol>
-
             <CCol md={4}>
-              <CWidgetStatsA
-                color="secondary"
-                value={String(atencionesIniciadas.length)}
-                title="Atenciones iniciadas"
-              />
+              <CWidgetStatsA color="secondary" value={String(atencionesIniciadas.length)} title="Atenciones iniciadas" />
             </CCol>
-
             <CCol md={4}>
-              <CWidgetStatsA
-                color="success"
-                value={String(atencionesFinalizadas.length)}
-                title="Atenciones finalizadas"
-              />
+              <CWidgetStatsA color="success" value={String(atencionesFinalizadas.length)} title="Atenciones finalizadas" />
             </CCol>
-
             <CCol md={4}>
-              <CWidgetStatsA
-                color="dark"
-                value={String(recetasDelDoctor.length)}
-                title="Recetas emitidas"
-              />
+              <CWidgetStatsA color="dark" value={String(recetasDelDoctor.length)} title="Recetas emitidas" />
             </CCol>
           </CRow>
 
+          {/* === SECCIÓN DE TABLAS (Mantiene la misma estructura limpia) === */}
           <CCard className="mb-4">
-            <CCardHeader>
-              <strong>Citas de hoy</strong>
-            </CCardHeader>
-
+            <CCardHeader><strong>Citas de hoy</strong></CCardHeader>
             <CCardBody>
               {loading ? (
-                <div className="text-center my-4">
-                  <CSpinner color="primary" />
-                </div>
+                <div className="text-center my-4"><CSpinner color="primary" /></div>
               ) : (
                 <CTable hover responsive align="middle">
                   <CTableHead color="light">
@@ -502,13 +443,10 @@ const DashboardMedico = () => {
                       <CTableHeaderCell className="text-end">Acciones</CTableHeaderCell>
                     </CTableRow>
                   </CTableHead>
-
                   <CTableBody>
                     {citasPendientesHoy.length === 0 ? (
                       <CTableRow>
-                        <CTableDataCell colSpan={8} className="text-center">
-                          No existen citas pendientes para hoy.
-                        </CTableDataCell>
+                        <CTableDataCell colSpan={8} className="text-center">No existen citas pendientes para hoy.</CTableDataCell>
                       </CTableRow>
                     ) : (
                       citasPendientesHoy.map((cita, index) => (
@@ -517,45 +455,21 @@ const DashboardMedico = () => {
                           <CTableDataCell>{formatearHora(cita.startDate)}</CTableDataCell>
                           <CTableDataCell>
                             <div>{obtenerNombrePaciente(cita.patientId)}</div>
-                            <small className="text-body-secondary">
-                              {obtenerPaciente(cita.patientId)?.identification || ''}
-                            </small>
+                            <small className="text-body-secondary">{obtenerPaciente(cita.patientId)?.identification || ''}</small>
                           </CTableDataCell>
                           <CTableDataCell>{obtenerNombreEspecialidad(cita.specialtyId)}</CTableDataCell>
                           <CTableDataCell>
-                            <CBadge color={obtenerColorEstado(cita.statusId)}>
-                              {obtenerNombreEstado(cita.statusId)}
-                            </CBadge>
+                            <CBadge color={obtenerColorEstado(cita.statusId)}>{obtenerNombreEstado(cita.statusId)}</CBadge>
                           </CTableDataCell>
                           <CTableDataCell>
-                            {tieneAtencion(cita.id) ? (
-                              <CBadge color="success">Iniciada</CBadge>
-                            ) : (
-                              <CBadge color="secondary">Sin iniciar</CBadge>
-                            )}
+                            <CBadge color={tieneAtencion(cita.id) ? 'success' : 'secondary'}>
+                              {tieneAtencion(cita.id) ? 'Iniciada' : 'Sin iniciar'}
+                            </CBadge>
                           </CTableDataCell>
                           <CTableDataCell>{cita.reason || '-'}</CTableDataCell>
                           <CTableDataCell className="text-end">
-                            <CButton
-                              color="secondary"
-                              variant="outline"
-                              size="sm"
-                              className="me-2 mb-1"
-                              onClick={() => verPaciente(cita)}
-                            >
-                              Ver paciente
-                            </CButton>
-
-                            <CButton
-                              color="success"
-                              variant="outline"
-                              size="sm"
-                              className="mb-1"
-                              disabled={tieneAtencion(cita.id)}
-                              onClick={() => abrirModalIniciarAtencion(cita)}
-                            >
-                              Iniciar atención
-                            </CButton>
+                            <CButton color="secondary" variant="outline" size="sm" className="me-2 mb-1" onClick={() => verPaciente(cita)}>Ver paciente</CButton>
+                            <CButton color="success" variant="outline" size="sm" className="mb-1" disabled={tieneAtencion(cita.id)} onClick={() => abrirModalIniciarAtencion(cita)}>Iniciar atención</CButton>
                           </CTableDataCell>
                         </CTableRow>
                       ))
@@ -567,10 +481,7 @@ const DashboardMedico = () => {
           </CCard>
 
           <CCard className="mb-4">
-            <CCardHeader>
-              <strong>Pacientes en espera</strong>
-            </CCardHeader>
-
+            <CCardHeader><strong>Pacientes en espera</strong></CCardHeader>
             <CCardBody>
               <CTable hover responsive align="middle">
                 <CTableHead color="light">
@@ -583,13 +494,10 @@ const DashboardMedico = () => {
                     <CTableHeaderCell className="text-end">Acciones</CTableHeaderCell>
                   </CTableRow>
                 </CTableHead>
-
                 <CTableBody>
                   {pacientesEnEspera.length === 0 ? (
                     <CTableRow>
-                      <CTableDataCell colSpan={6} className="text-center">
-                        No existen pacientes en espera.
-                      </CTableDataCell>
+                      <CTableDataCell colSpan={6} className="text-center">No existen pacientes en espera.</CTableDataCell>
                     </CTableRow>
                   ) : (
                     pacientesEnEspera.map((cita, index) => (
@@ -600,25 +508,8 @@ const DashboardMedico = () => {
                         <CTableDataCell>{obtenerNombreEspecialidad(cita.specialtyId)}</CTableDataCell>
                         <CTableDataCell>{cita.reason || '-'}</CTableDataCell>
                         <CTableDataCell className="text-end">
-                          <CButton
-                            color="secondary"
-                            variant="outline"
-                            size="sm"
-                            className="me-2"
-                            onClick={() => verPaciente(cita)}
-                          >
-                            Ver paciente
-                          </CButton>
-
-                          <CButton
-                            color="success"
-                            variant="outline"
-                            size="sm"
-                            disabled={tieneAtencion(cita.id)}
-                            onClick={() => abrirModalIniciarAtencion(cita)}
-                          >
-                            Iniciar atención
-                          </CButton>
+                          <CButton color="secondary" variant="outline" size="sm" className="me-2" onClick={() => verPaciente(cita)}>Ver paciente</CButton>
+                          <CButton color="success" variant="outline" size="sm" disabled={tieneAtencion(cita.id)} onClick={() => abrirModalIniciarAtencion(cita)}>Iniciar atención</CButton>
                         </CTableDataCell>
                       </CTableRow>
                     ))
@@ -629,10 +520,7 @@ const DashboardMedico = () => {
           </CCard>
 
           <CCard>
-            <CCardHeader>
-              <strong>Próximas citas</strong>
-            </CCardHeader>
-
+            <CCardHeader><strong>Próximas citas</strong></CCardHeader>
             <CCardBody>
               <CTable hover responsive align="middle">
                 <CTableHead color="light">
@@ -645,13 +533,10 @@ const DashboardMedico = () => {
                     <CTableHeaderCell className="text-end">Acciones</CTableHeaderCell>
                   </CTableRow>
                 </CTableHead>
-
                 <CTableBody>
                   {proximasCitas.length === 0 ? (
                     <CTableRow>
-                      <CTableDataCell colSpan={6} className="text-center">
-                        No existen próximas citas registradas.
-                      </CTableDataCell>
+                      <CTableDataCell colSpan={6} className="text-center">No existen próximas citas registradas.</CTableDataCell>
                     </CTableRow>
                   ) : (
                     proximasCitas.map((cita, index) => (
@@ -661,19 +546,10 @@ const DashboardMedico = () => {
                         <CTableDataCell>{obtenerNombrePaciente(cita.patientId)}</CTableDataCell>
                         <CTableDataCell>{obtenerNombreEspecialidad(cita.specialtyId)}</CTableDataCell>
                         <CTableDataCell>
-                          <CBadge color={obtenerColorEstado(cita.statusId)}>
-                            {obtenerNombreEstado(cita.statusId)}
-                          </CBadge>
+                          <CBadge color={obtenerColorEstado(cita.statusId)}>{obtenerNombreEstado(cita.statusId)}</CBadge>
                         </CTableDataCell>
                         <CTableDataCell className="text-end">
-                          <CButton
-                            color="secondary"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => verPaciente(cita)}
-                          >
-                            Ver paciente
-                          </CButton>
+                          <CButton color="secondary" variant="outline" size="sm" onClick={() => verPaciente(cita)}>Ver paciente</CButton>
                         </CTableDataCell>
                       </CTableRow>
                     ))
@@ -686,49 +562,23 @@ const DashboardMedico = () => {
       </CCard>
 
       <CModal visible={visibleIniciarAtencion} onClose={cerrarModalIniciarAtencion} backdrop="static">
-        <CModalHeader>
-          <CModalTitle>Iniciar atención médica</CModalTitle>
-        </CModalHeader>
-
+        <CModalHeader><CModalTitle>Iniciar atención médica</CModalTitle></CModalHeader>
         <CModalBody>
-          {modalError && (
-            <CAlert color="danger" dismissible onClose={() => setModalError('')}>
-              {modalError}
-            </CAlert>
-          )}
-
+          {modalError && <CAlert color="danger" dismissible onClose={() => setModalError('')}>{modalError}</CAlert>}
           {selectedAppointment && (
             <CAlert color="info">
               <strong>Paciente:</strong> {obtenerNombrePaciente(selectedAppointment.patientId)} <br />
               <strong>Hora:</strong> {formatearFechaHora(selectedAppointment.startDate)} <br />
-              <strong>Especialidad:</strong>{' '}
-              {obtenerNombreEspecialidad(selectedAppointment.specialtyId)}
+              <strong>Especialidad:</strong> {obtenerNombreEspecialidad(selectedAppointment.specialtyId)}
             </CAlert>
           )}
-
           <CFormLabel>Motivo de consulta</CFormLabel>
-          <CFormTextarea
-            rows={4}
-            value={reasonConsultation}
-            onChange={(e) => setReasonConsultation(e.target.value)}
-            placeholder="Ej: Paciente refiere dolor lumbar crónico desde hace 2 semanas."
-          />
+          <CFormTextarea rows={4} value={reasonConsultation} onChange={(e) => setReasonConsultation(e.target.value)} placeholder="Ej: Paciente refiere dolor lumbar crónico..." />
         </CModalBody>
-
         <CModalFooter>
-          <CButton color="secondary" variant="outline" onClick={cerrarModalIniciarAtencion}>
-            Cancelar
-          </CButton>
-
+          <CButton color="secondary" variant="outline" onClick={cerrarModalIniciarAtencion}>Cancelar</CButton>
           <CButton color="success" onClick={iniciarAtencion} disabled={saving}>
-            {saving ? (
-              <>
-                <CSpinner size="sm" className="me-2" />
-                Iniciando...
-              </>
-            ) : (
-              'Iniciar atención'
-            )}
+            {saving ? <><CSpinner size="sm" className="me-2" />Iniciando...</> : 'Iniciar atención'}
           </CButton>
         </CModalFooter>
       </CModal>

@@ -1,11 +1,7 @@
 /**
  * Sidebar Navigation Configuration
  *
- * Defines the structure and content of the sidebar navigation menu.
- * Supports multiple navigation component types from CoreUI React:
- * - CNavItem: Single navigation link
- * - CNavGroup: Collapsible group of links
- * - CNavTitle: Section title/divider
+ * Defines the structure and content of the sidebar navigation menu based on user roles.
  *
  * @module _nav
  */
@@ -13,776 +9,229 @@
 import React from 'react'
 import CIcon from '@coreui/icons-react'
 import {
-  cilBell,
-  cilCalculator,
   cilCalendar,
-  cilChartPie,
-  cilCursor,
   cilDescription,
-  cilDrop,
-  cilExternalLink,
   cilNotes,
-  cilPencil,
-  cilPuzzle,
   cilSpeedometer,
-  cilStar,
+  cilPeople,
 } from '@coreui/icons'
 import { CNavGroup, CNavItem, CNavTitle } from '@coreui/react'
 
 /**
- * Navigation menu structure array
+ * Genera la estructura del menú de navegación filtrada por roles de usuario.
  *
- * @type {Array<Object>}
- * @property {React.ComponentType} component - CoreUI nav component (CNavItem, CNavGroup, CNavTitle)
- * @property {string} name - Display text for the nav item
- * @property {string} [to] - Internal route path (for CNavItem with routing)
- * @property {string} [href] - External URL (for CNavItem with external links)
- * @property {React.ReactNode} [icon] - Icon element to display
- * @property {Object} [badge] - Optional badge configuration
- * @property {string} badge.color - Badge color (info, danger, success, etc.)
- * @property {string} badge.text - Badge text content
- * @property {Array<Object>} [items] - Child items for CNavGroup
- *
- * @example
- * // Simple navigation item
- * {
- *   component: CNavItem,
- *   name: 'Dashboard',
- *   to: '/dashboard',
- *   icon: <CIcon icon={cilSpeedometer} customClassName="nav-icon" />,
- * }
- *
- * @example
- * // Navigation group with children
- * {
- *   component: CNavGroup,
- *   name: 'Base',
- *   to: '/base',
- *   icon: <CIcon icon={cilPuzzle} customClassName="nav-icon" />,
- *   items: [
- *     {
- *       component: CNavItem,
- *       name: 'Cards',
- *       to: '/base/cards',
- *     },
- *   ],
- * }
- *
- * @example
- * // Section title
- * {
- *   component: CNavTitle,
- *   name: 'Theme',
- * }
+ * @param {Array<string>} userRoles - Arreglo de roles del usuario (ej: ['ADMIN'])
+ * @returns {Array<Object>} Arreglo de componentes de menú para CoreUI
  */
-const _nav = [
-  {
-    component: CNavItem,
-    name: 'Dashboard',
-    to: '/dashboard',
-    icon: <CIcon icon={cilSpeedometer} customClassName="nav-icon" />,
-    badge: {
-      color: 'info',
-      text: 'NEW',
-    },
-  },
+export const getSidebarNav = (userRoles = []) => {
+  const isAdmin = userRoles.includes('ADMIN')
+  const isMedico = userRoles.includes('MEDICO')
+  const isAsistente = userRoles.includes('ASISTENTE')
+  const hasAnyRole = userRoles.length > 0
 
-  {
-    component: CNavTitle,
-    name: 'Administración',
-  },
-  {
-    component: CNavGroup,
-    name: 'Admin de Usuarios',
-    to: '/administracion/admin-usuarios',
-    icon: <CIcon icon={cilNotes} customClassName="nav-icon" />,
-    items: [
-      {
-        component: CNavItem,
-        name: 'Usuarios',
-        to: '/administracion/admin-usuarios/usuarios',
-      },
-      {
-        component: CNavItem,
-        name: 'Roles',
-        to: '/administracion/admin-usuarios/roles',
-      },
-    ],
-  },
+  const menu = []
 
-  {
-    component: CNavTitle,
-    name: 'Clínica',
-  },
-  {
-    component: CNavGroup,
-    name: 'Gestión Clínica',
-    to: '/clinica',
-    icon: <CIcon icon={cilDescription} customClassName="nav-icon" />,
-    items: [
-      {
-        component: CNavItem,
-        name: 'Sucursales',
-        to: '/clinica/sucursales',
-      },
-      {
-        component: CNavItem,
-        name: 'Consultorios',
-        to: '/clinica/consultorios',
-      },
-      {
-        component: CNavItem,
-        name: 'Especialidades',
-        to: '/clinica/especialidades',
-      },
-      {
-        component: CNavItem,
-        name: 'Médicos',
-        to: '/clinica/medicos',
-      },
-      {
-        component: CNavItem,
-        name: 'Asistentes Clínicos',
-        to: '/clinica/asistentes-clinicos',
-      },
-    ],
-  },
+  // ==========================================
+  // DASHBOARD (Visible para todos los logueados)
+  // ==========================================
+  if (hasAnyRole) {
+    menu.push({
+      component: CNavItem,
+      name: 'Dashboard',
+      to: '/dashboard',
+      icon: <CIcon icon={cilSpeedometer} customClassName="nav-icon" />,
+    })
+  }
 
-  {
-    component: CNavTitle,
-    name: 'Pacientes',
-  },
-  {
-    component: CNavGroup,
-    name: 'Gestión de Pacientes',
-    to: '/pacientes',
-    icon: <CIcon icon={cilNotes} customClassName="nav-icon" />,
-    items: [
+  // ==========================================
+  // SECCIÓN: ADMINISTRACIÓN Y CLÍNICA (ESTRICTO SOLO ADMIN)
+  // ==========================================
+  if (isAdmin) {
+    menu.push(
       {
-        component: CNavItem,
+        component: CNavTitle,
+        name: 'Administración',
+      },
+      {
+        component: CNavGroup,
+        name: 'Admin de Usuarios',
+        to: '/administracion/admin-usuarios',
+        icon: <CIcon icon={cilNotes} customClassName="nav-icon" />,
+        items: [
+          {
+            component: CNavItem,
+            name: 'Usuarios',
+            to: '/administracion/admin-usuarios/usuarios',
+          },
+          {
+            component: CNavItem,
+            name: 'Roles',
+            to: '/administracion/admin-usuarios/roles',
+          },
+        ],
+      },
+      {
+        component: CNavTitle,
+        name: 'Clínica',
+      },
+      {
+        component: CNavGroup,
+        name: 'Gestión Clínica',
+        to: '/clinica',
+        icon: <CIcon icon={cilDescription} customClassName="nav-icon" />,
+        items: [
+          { component: CNavItem, name: 'Sucursales', to: '/clinica/sucursales' },
+          { component: CNavItem, name: 'Consultorios', to: '/clinica/consultorios' },
+          { component: CNavItem, name: 'Especialidades', to: '/clinica/especialidades' },
+          { component: CNavItem, name: 'Médicos', to: '/clinica/medicos' },
+          { component: CNavItem, name: 'Asistentes Clínicos', to: '/clinica/asistentes-clinicos' },
+        ],
+      }
+    )
+  }
+
+  // ==========================================
+  // SECCIÓN: PACIENTES (ADMIN, MEDICO, ASISTENTE)
+  // ==========================================
+  if (hasAnyRole) {
+    menu.push(
+      {
+        component: CNavTitle,
         name: 'Pacientes',
-        to: '/pacientes/pacientes',
       },
-    ],
-  },
+      {
+        component: CNavGroup,
+        name: 'Gestión de Pacientes',
+        to: '/pacientes',
+        icon: <CIcon icon={cilPeople} customClassName="nav-icon" />,
+        items: [
+          {
+            component: CNavItem,
+            name: 'Pacientes',
+            to: '/pacientes/pacientes',
+          },
+        ],
+      }
+    )
+  }
 
-  {
-    component: CNavTitle,
-    name: 'Pantalla de Agenda',
-  },
-  {
-    component: CNavGroup,
-    name: 'Agenda',
-    to: '/agenda',
-    icon: <CIcon icon={cilCalendar} customClassName="nav-icon" />,
-    items: [
-      {
-        component: CNavItem,
-        name: 'Horarios Médicos',
-        to: '/agenda/horarios-medicos',
-      },
-      {
-        component: CNavItem,
-        name: 'Bloqueo de Agenda',
-        to: '/agenda/bloqueo-agenda',
-      },
-      {
-        component: CNavItem,
-        name: 'Tipos de Bloqueo',
-        to: '/agenda/tipos-bloqueo',
-      },
-      {
-        component: CNavItem,
-        name: 'Calendario General de Citas',
-        to: '/agenda/calendario-citas',
-      },
-      {
-        component: CNavItem,
-        name: 'Crear Cita Médica',
-        to: '/agenda/crear-cita-medica',
-      },
-      {
-        component: CNavItem,
-        name: 'Estados de Cita',
-        to: '/agenda/estados-cita',
-      },
-    ],
-  },
+  // ==========================================
+  // SECCIÓN: AGENDA (Muestra sub-ítems según rol)
+  // ==========================================
+  const agendaItems = []
 
-  {
-    component: CNavTitle,
-    name: 'Autorizaciones',
-  },
-  {
-    component: CNavGroup,
-    name: 'Atención',
-    to: '/autorizaciones',
-    icon: <CIcon icon={cilNotes} customClassName="nav-icon" />,
-    items: [
-      {
-        component: CNavItem,
-        name: 'Autorización de Atención',
-        to: '/autorizaciones/autorizacion-atencion',
-      },
-    ],
-  },
+  if (isAdmin || isMedico) {
+    agendaItems.push(
+      { component: CNavItem, name: 'Horarios Médicos', to: '/agenda/horarios-medicos' },
+      { component: CNavItem, name: 'Bloqueo de Agenda', to: '/agenda/bloqueo-agenda' }
+    )
+  }
 
-  {
-    component: CNavTitle,
-    name: 'Pantalla del Médico',
-  },
-  {
-    component: CNavGroup,
-    name: 'Médico',
-    to: '/medico',
-    icon: <CIcon icon={cilNotes} customClassName="nav-icon" />,
-    items: [
-      {
-        component: CNavItem,
-        name: 'Dashboard del Médico',
-        to: '/medico/dashboard',
-      },
-      {
-        component: CNavItem,
-        name: 'Mi Calendario',
-        to: '/medico/mi-calendario',
-      },
-      {
-        component: CNavItem,
-        name: 'Atención Médica',
-        to: '/medico/atencion-medica',
-      },
-      {
-        component: CNavItem,
-        name: 'Recetas Médicas',
-        to: '/medico/recetas-medicas',
-      },
-    ],
-  },
+  if (isAdmin || isAsistente) {
+    agendaItems.push(
+      { component: CNavItem, name: 'Calendario General de Citas', to: '/agenda/calendario-citas' },
+      { component: CNavItem, name: 'Crear Cita Médica', to: '/agenda/crear-cita-medica' }
+    )
+  }
 
-  {
-    component: CNavTitle,
-    name: 'Asistente Clínico',
-  },
-  {
-    component: CNavGroup,
-    name: 'Asistente',
-    to: '/asistente-clinico',
-    icon: <CIcon icon={cilNotes} customClassName="nav-icon" />,
-    items: [
-      {
-        component: CNavItem,
-        name: 'Dashboard Asistente',
-        to: '/asistente-clinico/dashboard',
-      },
-      {
-        component: CNavItem,
-        name: 'Bandeja de Chats',
-        to: '/asistente-clinico/bandeja-chats',
-      },
-      {
-        component: CNavItem,
-        name: 'Autorización de Atención',
-        to: '/asistente-clinico/autorizacion-atencion',
-      },
-    ],
-  },
+  if (isAdmin) {
+    agendaItems.push(
+      { component: CNavItem, name: 'Tipos de Bloqueo', to: '/agenda/tipos-bloqueo' },
+      { component: CNavItem, name: 'Estados de Cita', to: '/agenda/estados-cita' }
+    )
+  }
 
+  if (agendaItems.length > 0) {
+    menu.push(
+      {
+        component: CNavTitle,
+        name: 'Pantalla de Agenda',
+      },
+      {
+        component: CNavGroup,
+        name: 'Agenda',
+        to: '/agenda',
+        icon: <CIcon icon={cilCalendar} customClassName="nav-icon" />,
+        items: agendaItems,
+      }
+    )
+  }
 
+  // ==========================================
+  // SECCIÓN: AUTORIZACIONES (ADMIN y ASISTENTE)
+  // ==========================================
+  if (isAdmin || isAsistente) {
+    menu.push(
+      {
+        component: CNavTitle,
+        name: 'Autorizaciones',
+      },
+      {
+        component: CNavGroup,
+        name: 'Atención',
+        to: '/autorizaciones',
+        icon: <CIcon icon={cilNotes} customClassName="nav-icon" />,
+        items: [
+          {
+            component: CNavItem,
+            name: 'Autorización de Atención',
+            to: '/autorizaciones/autorizacion-atencion',
+          },
+        ],
+      }
+    )
+  }
 
+  // ==========================================
+  // SECCIÓN: PANTALLA DEL MÉDICO (Solo MEDICO)
+  // ==========================================
+  if (isMedico) {
+    menu.push(
+      {
+        component: CNavTitle,
+        name: 'Pantalla del Médico',
+      },
+      {
+        component: CNavGroup,
+        name: 'Médico',
+        to: '/medico',
+        icon: <CIcon icon={cilNotes} customClassName="nav-icon" />,
+        items: [
+          { component: CNavItem, name: 'Dashboard del Médico', to: '/medico/dashboard' },
+          { component: CNavItem, name: 'Mi Calendario', to: '/medico/mi-calendario' },
+          { component: CNavItem, name: 'Atención Médica', to: '/medico/atencion-medica' },
+          { component: CNavItem, name: 'Recetas Médicas', to: '/medico/recetas-medicas' },
+        ],
+      }
+    )
+  }
 
+  // ==========================================
+  // SECCIÓN: ASISTENTE CLÍNICO (ASISTENTE u Opcional ADMIN)
+  // ==========================================
+  if (isAsistente || isAdmin) {
+    menu.push(
+      {
+        component: CNavTitle,
+        name: 'Asistente Clínico',
+      },
+      {
+        component: CNavGroup,
+        name: 'Asistente',
+        to: '/asistente-clinico',
+        icon: <CIcon icon={cilNotes} customClassName="nav-icon" />,
+        items: [
+          ...(isAsistente ? [
+            { component: CNavItem, name: 'Dashboard Asistente', to: '/asistente-clinico/dashboard' },
+            { component: CNavItem, name: 'Autorización de Atención', to: '/asistente-clinico/autorizacion-atencion' }
+          ] : []),
+          { component: CNavItem, name: 'Bandeja de Chats', to: '/asistente-clinico/bandeja-chats' }
+        ],
+      }
+    )
+  }
 
+  return menu
+}
 
-
-
-
-
-
-  {
-    component: CNavTitle,
-    name: 'Theme',
-  },
-  {
-    component: CNavItem,
-    name: 'Colors',
-    to: '/theme/colors',
-    icon: <CIcon icon={cilDrop} customClassName="nav-icon" />,
-  },
-  {
-    component: CNavItem,
-    name: 'Typography',
-    to: '/theme/typography',
-    icon: <CIcon icon={cilPencil} customClassName="nav-icon" />,
-  },
-  {
-    component: CNavTitle,
-    name: 'Components',
-  },
-  {
-    component: CNavGroup,
-    name: 'Base',
-    to: '/base',
-    icon: <CIcon icon={cilPuzzle} customClassName="nav-icon" />,
-    items: [
-      {
-        component: CNavItem,
-        name: 'Accordion',
-        to: '/base/accordion',
-      },
-      {
-        component: CNavItem,
-        name: 'Breadcrumb',
-        to: '/base/breadcrumbs',
-      },
-      {
-        component: CNavItem,
-        name: (
-          <React.Fragment>
-            {'Calendar'}
-            <CIcon icon={cilExternalLink} size="sm" className="ms-2" />
-          </React.Fragment>
-        ),
-        href: 'https://coreui.io/react/docs/components/calendar/',
-        badge: {
-          color: 'danger',
-          text: 'PRO',
-        },
-      },
-      {
-        component: CNavItem,
-        name: 'Cards',
-        to: '/base/cards',
-      },
-      {
-        component: CNavItem,
-        name: 'Carousel',
-        to: '/base/carousels',
-      },
-      {
-        component: CNavItem,
-        name: 'Chip',
-        to: '/base/chip',
-      },
-      {
-        component: CNavItem,
-        name: 'Collapse',
-        to: '/base/collapses',
-      },
-      {
-        component: CNavItem,
-        name: 'List group',
-        to: '/base/list-groups',
-      },
-      {
-        component: CNavItem,
-        name: 'Navs & Tabs',
-        to: '/base/navs',
-      },
-      {
-        component: CNavItem,
-        name: 'Pagination',
-        to: '/base/paginations',
-      },
-      {
-        component: CNavItem,
-        name: 'Placeholders',
-        to: '/base/placeholders',
-      },
-      {
-        component: CNavItem,
-        name: 'Popovers',
-        to: '/base/popovers',
-      },
-      {
-        component: CNavItem,
-        name: 'Progress',
-        to: '/base/progress',
-      },
-      {
-        component: CNavItem,
-        name: 'Smart Pagination',
-        href: 'https://coreui.io/react/docs/components/smart-pagination/',
-        badge: {
-          color: 'danger',
-          text: 'PRO',
-        },
-      },
-      {
-        component: CNavItem,
-        name: (
-          <React.Fragment>
-            {'Smart Table'}
-            <CIcon icon={cilExternalLink} size="sm" className="ms-2" />
-          </React.Fragment>
-        ),
-        href: 'https://coreui.io/react/docs/components/smart-table/',
-        badge: {
-          color: 'danger',
-          text: 'PRO',
-        },
-      },
-      {
-        component: CNavItem,
-        name: 'Spinners',
-        to: '/base/spinners',
-      },
-      {
-        component: CNavItem,
-        name: 'Tables',
-        to: '/base/tables',
-      },
-      {
-        component: CNavItem,
-        name: 'Tabs',
-        to: '/base/tabs',
-      },
-      {
-        component: CNavItem,
-        name: 'Tooltips',
-        to: '/base/tooltips',
-      },
-      {
-        component: CNavItem,
-        name: (
-          <React.Fragment>
-            {'Virtual Scroller'}
-            <CIcon icon={cilExternalLink} size="sm" className="ms-2" />
-          </React.Fragment>
-        ),
-        href: 'https://coreui.io/react/docs/components/virtual-scroller/',
-        badge: {
-          color: 'danger',
-          text: 'PRO',
-        },
-      },
-    ],
-  },
-  {
-    component: CNavGroup,
-    name: 'Buttons',
-    to: '/buttons',
-    icon: <CIcon icon={cilCursor} customClassName="nav-icon" />,
-    items: [
-      {
-        component: CNavItem,
-        name: 'Buttons',
-        to: '/buttons/buttons',
-      },
-      {
-        component: CNavItem,
-        name: 'Buttons groups',
-        to: '/buttons/button-groups',
-      },
-      {
-        component: CNavItem,
-        name: 'Dropdowns',
-        to: '/buttons/dropdowns',
-      },
-      {
-        component: CNavItem,
-        name: (
-          <React.Fragment>
-            {'Loading Button'}
-            <CIcon icon={cilExternalLink} size="sm" className="ms-2" />
-          </React.Fragment>
-        ),
-        href: 'https://coreui.io/react/docs/components/loading-button/',
-        badge: {
-          color: 'danger',
-          text: 'PRO',
-        },
-      },
-    ],
-  },
-  {
-    component: CNavGroup,
-    name: 'Forms',
-    icon: <CIcon icon={cilNotes} customClassName="nav-icon" />,
-    items: [
-      {
-        component: CNavItem,
-        name: (
-          <React.Fragment>
-            {'Autocomplete'}
-            <CIcon icon={cilExternalLink} size="sm" className="ms-2" />
-          </React.Fragment>
-        ),
-        href: 'https://coreui.io/react/docs/forms/autocomplete/',
-        badge: {
-          color: 'danger',
-          text: 'PRO',
-        },
-      },
-      {
-        component: CNavItem,
-        name: 'Checks & Radios',
-        to: '/forms/checks-radios',
-      },
-      {
-        component: CNavItem,
-        name: 'Chip Input',
-        to: '/forms/chip-input',
-      },
-      {
-        component: CNavItem,
-        name: (
-          <React.Fragment>
-            {'Date Picker'}
-            <CIcon icon={cilExternalLink} size="sm" className="ms-2" />
-          </React.Fragment>
-        ),
-        href: 'https://coreui.io/react/docs/forms/date-picker/',
-        badge: {
-          color: 'danger',
-          text: 'PRO',
-        },
-      },
-      {
-        component: CNavItem,
-        name: 'Date Range Picker',
-        href: 'https://coreui.io/react/docs/forms/date-range-picker/',
-        badge: {
-          color: 'danger',
-          text: 'PRO',
-        },
-      },
-      {
-        component: CNavItem,
-        name: 'Floating Labels',
-        to: '/forms/floating-labels',
-      },
-      {
-        component: CNavItem,
-        name: 'Form Control',
-        to: '/forms/form-control',
-      },
-      {
-        component: CNavItem,
-        name: 'Input Group',
-        to: '/forms/input-group',
-      },
-      {
-        component: CNavItem,
-        name: (
-          <React.Fragment>
-            {'Multi Select'}
-            <CIcon icon={cilExternalLink} size="sm" className="ms-2" />
-          </React.Fragment>
-        ),
-        href: 'https://coreui.io/react/docs/forms/multi-select/',
-        badge: {
-          color: 'danger',
-          text: 'PRO',
-        },
-      },
-      {
-        component: CNavItem,
-        name: (
-          <React.Fragment>
-            {'OTP Input'}
-            <CIcon icon={cilExternalLink} size="sm" className="ms-2" />
-          </React.Fragment>
-        ),
-        href: 'https://coreui.io/react/docs/forms/one-time-password-input/',
-        badge: {
-          color: 'danger',
-          text: 'PRO',
-        },
-      },
-      {
-        component: CNavItem,
-        name: (
-          <React.Fragment>
-            {'Password Input'}
-            <CIcon icon={cilExternalLink} size="sm" className="ms-2" />
-          </React.Fragment>
-        ),
-        href: 'https://coreui.io/react/docs/forms/password-input/',
-        badge: {
-          color: 'danger',
-          text: 'PRO',
-        },
-      },
-      {
-        component: CNavItem,
-        name: 'Range',
-        to: '/forms/range',
-      },
-      {
-        component: CNavItem,
-        name: (
-          <React.Fragment>
-            {'Range Slider'}
-            <CIcon icon={cilExternalLink} size="sm" className="ms-2" />
-          </React.Fragment>
-        ),
-        href: 'https://coreui.io/react/docs/forms/range-slider/',
-        badge: {
-          color: 'danger',
-          text: 'PRO',
-        },
-      },
-      {
-        component: CNavItem,
-        name: (
-          <React.Fragment>
-            {'Rating'}
-            <CIcon icon={cilExternalLink} size="sm" className="ms-2" />
-          </React.Fragment>
-        ),
-        href: 'https://coreui.io/react/docs/forms/rating/',
-        badge: {
-          color: 'danger',
-          text: 'PRO',
-        },
-      },
-      {
-        component: CNavItem,
-        name: 'Select',
-        to: '/forms/select',
-      },
-      {
-        component: CNavItem,
-        name: (
-          <React.Fragment>
-            {'Stepper'}
-            <CIcon icon={cilExternalLink} size="sm" className="ms-2" />
-          </React.Fragment>
-        ),
-        href: 'https://coreui.io/react/docs/forms/stepper/',
-        badge: {
-          color: 'danger',
-          text: 'PRO',
-        },
-      },
-      {
-        component: CNavItem,
-        name: (
-          <React.Fragment>
-            {'Time Picker'}
-            <CIcon icon={cilExternalLink} size="sm" className="ms-2" />
-          </React.Fragment>
-        ),
-        href: 'https://coreui.io/react/docs/forms/time-picker/',
-        badge: {
-          color: 'danger',
-          text: 'PRO',
-        },
-      },
-      {
-        component: CNavItem,
-        name: 'Layout',
-        to: '/forms/layout',
-      },
-      {
-        component: CNavItem,
-        name: 'Validation',
-        to: '/forms/validation',
-      },
-    ],
-  },
-  {
-    component: CNavItem,
-    name: 'Charts',
-    to: '/charts',
-    icon: <CIcon icon={cilChartPie} customClassName="nav-icon" />,
-  },
-  {
-    component: CNavGroup,
-    name: 'Icons',
-    icon: <CIcon icon={cilStar} customClassName="nav-icon" />,
-    items: [
-      {
-        component: CNavItem,
-        name: 'CoreUI Free',
-        to: '/icons/coreui-icons',
-      },
-      {
-        component: CNavItem,
-        name: 'CoreUI Flags',
-        to: '/icons/flags',
-      },
-      {
-        component: CNavItem,
-        name: 'CoreUI Brands',
-        to: '/icons/brands',
-      },
-    ],
-  },
-  {
-    component: CNavGroup,
-    name: 'Notifications',
-    icon: <CIcon icon={cilBell} customClassName="nav-icon" />,
-    items: [
-      {
-        component: CNavItem,
-        name: 'Alerts',
-        to: '/notifications/alerts',
-      },
-      {
-        component: CNavItem,
-        name: 'Badges',
-        to: '/notifications/badges',
-      },
-      {
-        component: CNavItem,
-        name: 'Modal',
-        to: '/notifications/modals',
-      },
-      {
-        component: CNavItem,
-        name: 'Toasts',
-        to: '/notifications/toasts',
-      },
-    ],
-  },
-  {
-    component: CNavItem,
-    name: 'Widgets',
-    to: '/widgets',
-    icon: <CIcon icon={cilCalculator} customClassName="nav-icon" />,
-    badge: {
-      color: 'info',
-      text: 'NEW',
-    },
-  },
-  {
-    component: CNavTitle,
-    name: 'Extras',
-  },
-  {
-    component: CNavGroup,
-    name: 'Pages',
-    icon: <CIcon icon={cilStar} customClassName="nav-icon" />,
-    items: [
-      {
-        component: CNavItem,
-        name: 'Login',
-        to: '/login',
-      },
-      {
-        component: CNavItem,
-        name: 'Register',
-        to: '/register',
-      },
-      {
-        component: CNavItem,
-        name: 'Error 404',
-        to: '/404',
-      },
-      {
-        component: CNavItem,
-        name: 'Error 500',
-        to: '/500',
-      },
-    ],
-  },
-  {
-    component: CNavItem,
-    name: 'Docs',
-    href: 'https://coreui.io/react/docs/templates/installation/',
-    icon: <CIcon icon={cilDescription} customClassName="nav-icon" />,
-  },
-]
-
-export default _nav
+export default getSidebarNav

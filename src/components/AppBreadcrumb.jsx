@@ -1,15 +1,28 @@
-import React from 'react'
+import React, { useMemo } from 'react'
 import { useLocation } from 'react-router-dom'
+import { useSelector } from 'react-redux' // 1. Importamos useSelector para leer el rol
 
-import { routes } from '../routes'
+// 2. Importamos la función dinámica en lugar de la variable estática vieja
+import { getAppRoutes } from '../routes'
 
 import { CBreadcrumb, CBreadcrumbItem } from '@coreui/react'
 
 const AppBreadcrumb = () => {
   const currentLocation = useLocation().pathname
 
-  const getRouteName = (pathname, routes) => {
-    const currentRoute = routes.find((route) => route.path === pathname)
+  // 3. Obtenemos las rutas correctas para el rol que inició sesión
+  const authUser = useSelector((state) => state.auth?.user || state.user || null)
+  
+  const currentRoutes = useMemo(() => {
+    if (!authUser || !authUser.roles) {
+      return []
+    }
+    const activeRoles = Array.isArray(authUser.roles) ? authUser.roles : [authUser.roles]
+    return getAppRoutes(activeRoles)
+  }, [authUser])
+
+  const getRouteName = (pathname, routesList) => {
+    const currentRoute = routesList.find((route) => route.path === pathname)
     return currentRoute ? currentRoute.name : false
   }
 
@@ -17,7 +30,7 @@ const AppBreadcrumb = () => {
     const breadcrumbs = []
     location.split('/').reduce((prev, curr, index, array) => {
       const currentPathname = `${prev}/${curr}`
-      const routeName = getRouteName(currentPathname, routes)
+      const routeName = getRouteName(currentPathname, currentRoutes) // Usamos las rutas dinámicas
       routeName &&
         breadcrumbs.push({
           pathname: currentPathname,

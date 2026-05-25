@@ -51,9 +51,31 @@ const Login = () => {
         password,
       })
 
-      console.log('Usuario logueado:', data.user)
+      console.log('Usuario logueado exitosamente:', data.user)
 
-      navigate('/dashboard', { replace: true })
+      // 1. Extraemos los roles de forma segura
+      const roles = data.user?.roles ? (Array.isArray(data.user.roles) ? data.user.roles : [data.user.roles]) : []
+
+      // 2. Evaluamos los roles para decidir el destino
+      if (roles.includes('MEDICO')) {
+        console.log('Redirigiendo al entorno de MÉDICO...')
+        navigate('/medico/dashboard', { replace: true })
+      } 
+      else if (roles.includes('ASISTENTE')) {
+        console.log('Redirigiendo al entorno de ASISTENTE...')
+        // Nota: Asegúrate de que coincida con la ruta exacta configurada en tus routes.js
+        navigate('/asistente-clinico/dashboard', { replace: true }) 
+      } 
+      else if (roles.includes('ADMIN')) {
+        console.log('Redirigiendo al entorno de ADMINISTRADOR...')
+        navigate('/dashboard', { replace: true })
+      } 
+      else {
+        // Fallback por si tiene un rol no mapeado
+        console.log('Rol desconocido, redirigiendo a la ruta base.')
+        navigate('/dashboard', { replace: true })
+      }
+
     } catch (err) {
       console.error('Error en login:', err)
       setError(err.message || 'Usuario o contraseña incorrectos')

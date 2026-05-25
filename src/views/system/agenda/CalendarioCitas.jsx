@@ -53,6 +53,7 @@ const initialForm = {
   startDate: '',
   reason: '',
   statusId: '',
+  observation: '',
 }
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -315,15 +316,17 @@ const CalendarioCitas = () => {
 
   const diasDelMes = useMemo(() => getDiasDelMes(currentYear, currentMonth), [currentYear, currentMonth])
 
-  const citasPorFecha = useMemo(() => {
-    const map = {}
-    citasConNombres.forEach((c) => {
-      const key = String(c.startDate || '').slice(0, 10)
-      if (!map[key]) map[key] = []
-      map[key].push(c)
-    })
-    return map
-  }, [citasConNombres])
+const citasPorFecha = useMemo(() => {
+  const map = {}
+  citasConNombres.forEach((c) => {
+    if (!c.startDate) return
+    const key = fmtDate(new Date(c.startDate))
+    
+    if (!map[key]) map[key] = []
+    map[key].push(c)
+  })
+  return map
+}, [citasConNombres])
 
   const citasDelDia = useMemo(() => {
     return (citasPorFecha[selectedDate] || []).sort((a, b) =>
@@ -376,6 +379,7 @@ const CalendarioCitas = () => {
       startDate: obtenerDateTimeInput(cita.startDate),
       reason: cita.reason || '',
       statusId: cita.statusId || '',
+      observation: cita.observation || '',
     })
     setModalError('')
     setVisible(true)
@@ -425,6 +429,7 @@ const CalendarioCitas = () => {
         specialtyId: String(form.specialtyId).trim(),
         startDate: normalizarFechaHora(form.startDate),
         reason: String(form.reason || '').trim() || null,
+        observation: String(form.observation || '').trim() || null,
       }
       if (form.statusId) payload.statusId = form.statusId
       if (editingAppointment) {
@@ -748,6 +753,10 @@ const CalendarioCitas = () => {
             <CCol md={12}>
               <CFormLabel>Motivo</CFormLabel>
               <CFormInput name="reason" value={form.reason} onChange={handleChange} placeholder="Ej: Consulta de control anual" />
+            </CCol>
+            <CCol md={12}>
+              <CFormLabel>Observación</CFormLabel>
+              <CFormInput name="observation" value={form.observation} onChange={handleChange} placeholder="Detalles o notas adicionales sobre la cita" />
             </CCol>
           </CRow>
         </CModalBody>
