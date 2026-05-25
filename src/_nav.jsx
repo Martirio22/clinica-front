@@ -27,6 +27,7 @@ export const getSidebarNav = (userRoles = []) => {
   const isAdmin = userRoles.includes('ADMIN')
   const isMedico = userRoles.includes('MEDICO')
   const isAsistente = userRoles.includes('ASISTENTE')
+  const isEnfermero = userRoles.includes('ENFERMERO')
   const hasAnyRole = userRoles.length > 0
 
   const menu = []
@@ -34,7 +35,7 @@ export const getSidebarNav = (userRoles = []) => {
   // ==========================================
   // DASHBOARD (Visible para todos los logueados)
   // ==========================================
-  if (hasAnyRole) {
+  if (isAdmin) {
     menu.push({
       component: CNavItem,
       name: 'Dashboard',

@@ -44,6 +44,7 @@ export const getAppRoutes = (userRoles = []) => {
   const isAdmin = userRoles.includes('ADMIN')
   const isMedico = userRoles.includes('MEDICO')
   const isAsistente = userRoles.includes('ASISTENTE')
+  const isEnfermero = userRoles.includes('ENFERMERO')
   const hasAnyRole = userRoles.length > 0
 
   const allowedRoutes = [
@@ -53,7 +54,7 @@ export const getAppRoutes = (userRoles = []) => {
   // Dashboard general accesible para cualquiera con un rol válido
   if (hasAnyRole) {
     allowedRoutes.push(
-      { path: '/dashboard', name: 'Dashboard', element: Dashboard },
+      
       { path: '/pacientes', name: 'Pacientes', exact: true },
       { path: '/pacientes/pacientes', name: 'Pacientes', element: Pacientes },
       { path: '/pacientes/perfil-paciente/:id', name: 'Perfil Paciente', element: PerfilPaciente }
@@ -63,6 +64,7 @@ export const getAppRoutes = (userRoles = []) => {
   // Rutas exclusivas de ADMINISTRADOR
   if (isAdmin) {
     allowedRoutes.push(
+      { path: '/dashboard', name: 'Dashboard', element: Dashboard },
       { path: '/administracion', name: 'Administración', exact: true },
       { path: '/administracion/admin-usuarios', name: 'Admin de Usuarios', exact: true },
       { path: '/administracion/admin-usuarios/usuarios', name: 'Usuarios', element: Usuarios },

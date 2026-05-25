@@ -52,19 +52,21 @@ const AppSidebar = () => {
     const isAdmin = roles.includes('ADMIN')
     const isMedico = roles.includes('MEDICO')
     const isAsistente = roles.includes('ASISTENTE')
+    const isEnfermero = roles.includes('ENFERMERO')
 
     const menu = [
-      {
-        component: CNavItem,
-        name: 'Dashboard',
-        to: '/dashboard',
-        icon: <CIcon icon={cilSpeedometer} customClassName="nav-icon" />,
-      }
+      
     ]
 
     if (isAdmin) {
       menu.push(
         { component: CNavTitle, name: 'Administración' },
+        {
+        component: CNavItem,
+        name: 'Dashboard',
+        to: '/dashboard',
+        icon: <CIcon icon={cilSpeedometer} customClassName="nav-icon" />,
+      },
         {
           component: CNavGroup,
           name: 'Admin de Usuarios',
