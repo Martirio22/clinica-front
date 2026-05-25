@@ -38,6 +38,12 @@ import DashboardAsistente from './views/system/asistenteClinico/DashboardAsisten
 import BandejaChats from './views/system/asistenteClinico/BandejaChats'
 import ChatEnVivo from './views/system/asistenteClinico/ChatEnVivo'
 import AutorizacionAtencionAsistente from './views/system/asistenteClinico/AutorizacionAtencionAsistente'
+import PacienteDelDia from './views/system/enfermero/PacienteDelDia'
+import LineasWhatsapp from './views/system/whatsappBot/LineasWhatsapp'
+import MenusBot from './views/system/whatsappBot/MenusBot'
+import OpcionesMenuBot from './views/system/whatsappBot/OpcionesMenuBot'
+import IntencionesIA from './views/system/whatsappBot/IntencionesIA'
+import EventosIA from './views/system/whatsappBot/EventosIA'
 
 // Dashboard
 const Dashboard = React.lazy(() => import('./views/dashboard/Dashboard'))
@@ -192,6 +198,40 @@ export const routes = [
     path: '/asistente-clinico/autorizacion-atencion',
     name: 'Autorización de Atención',
     element: AutorizacionAtencionAsistente,
+  },
+
+  { path: '/enfermero', name: 'Pantalla Enfermero', exact: true },
+  {
+    path: '/enfermero/paciente-del-dia',
+    name: 'Paciente del Día',
+    element: PacienteDelDia,
+  },
+
+  { path: '/whatsapp-bot', name: 'Pantallas de WhatsApp / Bot', exact: true },
+  {
+    path: '/whatsapp-bot/lineas-whatsapp',
+    name: 'Líneas WhatsApp',
+    element: LineasWhatsapp,
+  },
+  {
+    path: '/whatsapp-bot/menus-bot',
+    name: 'Menús del Bot',
+    element: MenusBot,
+  },
+  {
+    path: '/whatsapp-bot/menus-bot/:menuId/opciones',
+    name: 'Opciones del Menú',
+    element: OpcionesMenuBot,
+  },
+  {
+    path: '/whatsapp-bot/intenciones-ia',
+    name: 'Intenciones IA',
+    element: IntencionesIA,
+  },
+  {
+    path: '/whatsapp-bot/eventos-ia',
+    name: 'Eventos IA',
+    element: EventosIA,
   },
 
 

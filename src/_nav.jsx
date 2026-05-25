@@ -288,6 +288,57 @@ const _nav = [
     ],
   },
 
+  {
+    component: CNavTitle,
+    name: 'Pantalla Enfermero',
+  },
+  {
+    component: CNavGroup,
+    name: 'Enfermero',
+    to: '/enfermero',
+    icon: <CIcon icon={cilNotes} customClassName="nav-icon" />,
+    items: [
+      {
+        component: CNavItem,
+        name: 'Paciente del Día',
+        to: '/enfermero/paciente-del-dia',
+      },
+    ],
+  },
+
+  {
+    component: CNavTitle,
+    name: 'Pantallas de WhatsApp / Bot',
+  },
+  {
+    component: CNavGroup,
+    name: 'WhatsApp / Bot',
+    to: '/whatsapp-bot',
+    icon: <CIcon icon={cilNotes} customClassName="nav-icon" />,
+    items: [
+      {
+        component: CNavItem,
+        name: 'Líneas WhatsApp',
+        to: '/whatsapp-bot/lineas-whatsapp',
+      },
+      {
+        component: CNavItem,
+        name: 'Menús del Bot',
+        to: '/whatsapp-bot/menus-bot',
+      },
+      {
+        component: CNavItem,
+        name: 'Intenciones IA',
+        to: '/whatsapp-bot/intenciones-ia',
+      },
+      {
+        component: CNavItem,
+        name: 'Eventos IA',
+        to: '/whatsapp-bot/eventos-ia',
+      },
+    ],
+  },
+
 
 
 

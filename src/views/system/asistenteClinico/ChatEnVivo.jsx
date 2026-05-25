@@ -396,8 +396,10 @@ const ChatEnVivo = () => {
         chatSessionId: sessionId,
         senderType: 'ASISTENTE',
         content: String(newMessage || '').trim(),
-        messageType: 'TEXT',
+        messageType: 'SALIENTE',
       }
+
+      console.log('Payload enviar mensaje:', payload)
 
       const created = await chatMessageService.crear(payload)
 
