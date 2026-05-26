@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import {
   CAlert,
   CBadge,
@@ -39,7 +38,6 @@ const initialForm = {
 }
 
 const Medicos = () => {
-  const navigate = useNavigate()
   const [medicos, setMedicos] = useState([])
   const [usuariosMedicos, setUsuariosMedicos] = useState([])
   const [especialidades, setEspecialidades] = useState([])
@@ -333,19 +331,16 @@ const Medicos = () => {
     setConfirmModal((prev) => ({ ...prev, visible: false }))
   }
 
-  // ==========================================
-  // LAS FUNCIONES QUE MODIFICAMOS AHORA:
-  // ==========================================
   const irHorarios = (doctor) => {
-    navigate(`/agenda/horarios-medicos`)
+    alert(`Aquí puedes redirigir a horarios del médico: ${doctor.id}`)
   }
 
   const irBloqueos = (doctor) => {
-    navigate(`/agenda/bloqueo-agenda`)
+    alert(`Aquí puedes redirigir a bloqueos del médico: ${doctor.id}`)
   }
 
   const configurarHorario = (doctor) => {
-    navigate(`/agenda/horarios-medicos`)
+    alert(`Aquí puedes abrir la pantalla para configurar horario del médico: ${doctor.id}`)
   }
 
   return (

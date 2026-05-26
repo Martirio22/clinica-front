@@ -242,10 +242,20 @@ const RecetasMedicas = () => {
   }
 
   const obtenerDetallesPorReceta = (prescriptionId) => {
-    return detalles
-      .filter((detail) => detail.medicalPrescriptionId === prescriptionId)
-      .sort((a, b) => Number(a.order || 0) - Number(b.order || 0))
-  }
+  return detalles
+    .filter((detail) => {
+      const mismoDetalle = detail.medicalPrescriptionId === prescriptionId
+
+      const activo =
+        detail.isActive === true ||
+        detail.status === 'ACTIVE' ||
+        detail.estado === true ||
+        detail.active === true
+
+      return mismoDetalle && activo
+    })
+    .sort((a, b) => Number(a.order || 0) - Number(b.order || 0))
+}
 
   const recetasFiltradas = useMemo(() => {
     const texto = String(search || '').toLowerCase().trim()
@@ -552,6 +562,14 @@ const RecetasMedicas = () => {
       prescription.sentWhatsappAt || prescription.sentAt || prescription.isSent || prescription.wasSent || prescription.isSentWhatsapp,
     )
   }
+  const estaActiva = (prescription) => {
+  return (
+    prescription.isActive === true ||
+    prescription.status === 'ACTIVE' ||
+    prescription.estado === true ||
+    prescription.active === true
+  )
+}
 
   return (
     <>
