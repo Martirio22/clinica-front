@@ -49,11 +49,18 @@ const Especialidades = () => {
   const [modalError, setModalError] = useState('')
   const [success, setSuccess] = useState('')
 
+  // Estado del modal de confirmación dinámico unificado
+  const [confirmModal, setConfirmModal] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    onConfirm: null,
+  })
+
   const cargarEspecialidades = async () => {
     try {
       setLoading(true)
       setError('')
-
       const data = await specialtyService.listar()
       setEspecialidades(data || [])
     } catch (err) {
@@ -93,14 +100,12 @@ const Especialidades = () => {
 
   const abrirModalEditar = (specialty) => {
     setEditingSpecialty(specialty)
-
     setForm({
       code: specialty.code || '',
       name: specialty.name || '',
       description: specialty.description || '',
       isActive: specialty.isActive ?? true,
     })
-
     setError('')
     setModalError('')
     setSuccess('')
@@ -116,7 +121,6 @@ const Especialidades = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target
-
     setForm((prev) => ({
       ...prev,
       [name]: value,
@@ -133,14 +137,12 @@ const Especialidades = () => {
   const validarFormulario = () => {
     if (!String(form.code || '').trim()) return 'El código de la especialidad es requerido.'
     if (!String(form.name || '').trim()) return 'El nombre de la especialidad es requerido.'
-
     return ''
   }
 
   const guardarEspecialidad = async () => {
     try {
       const mensajeValidacion = validarFormulario()
-
       if (mensajeValidacion) {
         setModalError(mensajeValidacion)
         return
@@ -175,28 +177,49 @@ const Especialidades = () => {
     }
   }
 
-  const eliminarEspecialidad = async (specialty) => {
-    const confirmar = window.confirm(
-      `¿Seguro que deseas inactivar la especialidad ${specialty.name}?`,
-    )
+  // Abre el modal dinámico según la acción requerida
+  const confirmarAlternarEstadoEspecialidad = (specialty) => {
+    const accion = specialty.isActive ? 'inactivar' : 'activar'
+    setConfirmModal({
+      visible: true,
+      title: `${accion.charAt(0).toUpperCase() + accion.slice(1)} Especialidad`,
+      message: `¿Seguro que deseas ${accion} la especialidad ${specialty.name}?`,
+      onConfirm: () => ejecutarAlternarEstado(specialty),
+    })
+  }
 
-    if (!confirmar) return
-
+  const ejecutarAlternarEstado = async (specialty) => {
+    setConfirmModal((prev) => ({ ...prev, visible: false }))
     try {
       setLoading(true)
       setError('')
       setSuccess('')
 
-      await specialtyService.eliminar(specialty.id)
+      if (specialty.isActive) {
+        await specialtyService.eliminar(specialty.id)
+        setSuccess('Especialidad inactivada correctamente.')
+      } else {
+        const payload = {
+          code: specialty.code,
+          name: specialty.name,
+          description: specialty.description,
+          isActive: true,
+        }
+        await specialtyService.actualizar(specialty.id, payload)
+        setSuccess('Especialidad activada correctamente.')
+      }
 
-      setSuccess('Especialidad inactivada correctamente.')
       await cargarEspecialidades()
     } catch (err) {
       console.error(err)
-      setError('No se pudo inactivar la especialidad.')
+      setError('No se pudo cambiar el estado de la especialidad.')
     } finally {
       setLoading(false)
     }
+  }
+
+  const cerrarConfirmModal = () => {
+    setConfirmModal((prev) => ({ ...prev, visible: false }))
   }
 
   return (
@@ -204,7 +227,6 @@ const Especialidades = () => {
       <CCard>
         <CCardHeader className="d-flex justify-content-between align-items-center">
           <strong>Administración de Especialidades</strong>
-
           <CButton color="primary" onClick={abrirModalCrear}>
             Nueva Especialidad
           </CButton>
@@ -286,13 +308,12 @@ const Especialidades = () => {
                         </CButton>
 
                         <CButton
-                          color="danger"
+                          color={specialty.isActive ? 'danger' : 'success'}
                           variant="outline"
                           size="sm"
-                          disabled={!specialty.isActive}
-                          onClick={() => eliminarEspecialidad(specialty)}
+                          onClick={() => confirmarAlternarEstadoEspecialidad(specialty)}
                         >
-                          Inactivar
+                          {specialty.isActive ? 'Inactivar' : 'Activar'}
                         </CButton>
                       </CTableDataCell>
                     </CTableRow>
@@ -304,6 +325,7 @@ const Especialidades = () => {
         </CCardBody>
       </CCard>
 
+      {/* MODAL FORMULARIO */}
       <CModal visible={visible} onClose={cerrarModal} backdrop="static">
         <CModalHeader>
           <CModalTitle>
@@ -363,7 +385,6 @@ const Especialidades = () => {
           <CButton color="secondary" variant="outline" onClick={cerrarModal}>
             Cancelar
           </CButton>
-
           <CButton color="primary" onClick={guardarEspecialidad} disabled={saving}>
             {saving ? (
               <>
@@ -373,6 +394,24 @@ const Especialidades = () => {
             ) : (
               'Guardar'
             )}
+          </CButton>
+        </CModalFooter>
+      </CModal>
+
+      {/* MODAL DE CONFIRMACIÓN */}
+      <CModal visible={confirmModal.visible} onClose={cerrarConfirmModal} backdrop="static">
+        <CModalHeader>
+          <CModalTitle>{confirmModal.title}</CModalTitle>
+        </CModalHeader>
+        <CModalBody>
+          <p>{confirmModal.message}</p>
+        </CModalBody>
+        <CModalFooter>
+          <CButton color="secondary" variant="outline" onClick={cerrarConfirmModal}>
+            Cancelar
+          </CButton>
+          <CButton color={confirmModal.title?.includes('Activar') ? 'success' : 'danger'} onClick={confirmModal.onConfirm}>
+            Confirmar
           </CButton>
         </CModalFooter>
       </CModal>

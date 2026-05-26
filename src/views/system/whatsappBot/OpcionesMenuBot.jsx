@@ -61,6 +61,9 @@ const OpcionesMenuBot = () => {
 
   const [search, setSearch] = useState('')
   const [visibleForm, setVisibleForm] = useState(false)
+  
+  // Estado para el modal de confirmación
+  const [confirmData, setConfirmData] = useState({ visible: false, message: '', onConfirm: null })
 
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -174,22 +177,16 @@ const OpcionesMenuBot = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target
-
-    setForm((prev) => ({
-      ...prev,
-      [name]: value,
-    }))
+    setForm((prev) => ({ ...prev, [name]: value }))
   }
 
   const validarFormulario = () => {
     if (!String(form.code || '').trim()) return 'El código de la opción es requerido.'
     if (!String(form.optionText || '').trim()) return 'El texto de la opción es requerido.'
     if (!String(form.action || '').trim()) return 'La acción es requerida.'
-
     if (form.action === 'MOSTRAR_MENU' && !String(form.targetMenuId || '').trim()) {
       return 'Debe seleccionar un menú destino para la acción MOSTRAR_MENU.'
     }
-
     return ''
   }
 
@@ -209,19 +206,15 @@ const OpcionesMenuBot = () => {
   const guardarOpcion = async () => {
     try {
       const validation = validarFormulario()
-
       if (validation) {
         setModalError(validation)
         return
       }
-
       setSaving(true)
       setModalError('')
       setError('')
       setSuccess('')
-
       const payload = armarPayload()
-
       if (editingOption) {
         await botMenuOptionService.actualizar(editingOption.id, payload)
         setSuccess('Opción actualizada correctamente.')
@@ -229,7 +222,6 @@ const OpcionesMenuBot = () => {
         await botMenuOptionService.crear(payload)
         setSuccess('Opción creada correctamente.')
       }
-
       cerrarForm()
       await cargarOpciones()
     } catch (err) {
@@ -240,73 +232,61 @@ const OpcionesMenuBot = () => {
     }
   }
 
-  const cambiarEstado = async (option) => {
+  const cambiarEstado = (option) => {
     const nuevoEstado = option.isActive === false
-
-    const confirmar = window.confirm(
-      `¿Seguro que deseas ${nuevoEstado ? 'activar' : 'inactivar'} esta opción?`,
-    )
-
-    if (!confirmar) return
-
-    try {
-      setLoading(true)
-      setError('')
-      setSuccess('')
-
-      await botMenuOptionService.actualizar(option.id, {
-        menuBotId: option.menuBotId || menuId,
-        code: option.code,
-        optionText: option.optionText,
-        action: option.action,
-        targetMenuId: option.targetMenuId || null,
-        order: option.order,
-        isActive: nuevoEstado,
-      })
-
-      setSuccess(`Opción ${nuevoEstado ? 'activada' : 'inactivada'} correctamente.`)
-      await cargarOpciones()
-    } catch (err) {
-      console.error(err)
-      setError(err?.data?.message || err?.message || 'No se pudo cambiar el estado de la opción.')
-    } finally {
-      setLoading(false)
-    }
+    setConfirmData({
+      visible: true,
+      message: `¿Seguro que deseas ${nuevoEstado ? 'activar' : 'inactivar'} esta opción?`,
+      onConfirm: async () => {
+        try {
+          setLoading(true)
+          await botMenuOptionService.actualizar(option.id, {
+            menuBotId: option.menuBotId || menuId,
+            code: option.code,
+            optionText: option.optionText,
+            action: option.action,
+            targetMenuId: option.targetMenuId || null,
+            order: option.order,
+            isActive: nuevoEstado,
+          })
+          setSuccess(`Opción ${nuevoEstado ? 'activada' : 'inactivada'} correctamente.`)
+          await cargarOpciones()
+        } catch (err) {
+          setError(err?.data?.message || err?.message || 'No se pudo cambiar el estado de la opción.')
+        } finally {
+          setLoading(false)
+          setConfirmData({ ...confirmData, visible: false })
+        }
+      }
+    })
   }
 
-  const eliminarOpcion = async (option) => {
-    const confirmar = window.confirm(`¿Seguro que deseas eliminar la opción ${option.code}?`)
-
-    if (!confirmar) return
-
-    try {
-      setLoading(true)
-      setError('')
-      setSuccess('')
-
-      await botMenuOptionService.eliminar(option.id)
-
-      setSuccess('Opción eliminada correctamente.')
-      await cargarOpciones()
-    } catch (err) {
-      console.error(err)
-      setError(err?.data?.message || err?.message || 'No se pudo eliminar la opción.')
-    } finally {
-      setLoading(false)
-    }
+  const eliminarOpcion = (option) => {
+    setConfirmData({
+      visible: true,
+      message: `¿Seguro que deseas eliminar la opción ${option.code}?`,
+      onConfirm: async () => {
+        try {
+          setLoading(true)
+          await botMenuOptionService.eliminar(option.id)
+          setSuccess('Opción eliminada correctamente.')
+          await cargarOpciones()
+        } catch (err) {
+          setError(err?.data?.message || err?.message || 'No se pudo eliminar la opción.')
+        } finally {
+          setLoading(false)
+          setConfirmData({ ...confirmData, visible: false })
+        }
+      }
+    })
   }
 
   const moverOrden = async (option, direction) => {
     const ordenActual = Number(option.order || 0)
     const nuevoOrden = direction === 'UP' ? ordenActual - 1 : ordenActual + 1
-
     if (nuevoOrden < 1) return
-
     try {
       setLoading(true)
-      setError('')
-      setSuccess('')
-
       await botMenuOptionService.actualizar(option.id, {
         menuBotId: option.menuBotId || menuId,
         code: option.code,
@@ -316,20 +296,16 @@ const OpcionesMenuBot = () => {
         order: nuevoOrden,
         isActive: option.isActive !== false,
       })
-
       setSuccess('Orden actualizado correctamente.')
       await cargarOpciones()
     } catch (err) {
-      console.error(err)
       setError(err?.data?.message || err?.message || 'No se pudo cambiar el orden de la opción.')
     } finally {
       setLoading(false)
     }
   }
 
-  const volverMenus = () => {
-    navigate('/whatsapp-bot/menus-bot')
-  }
+  const volverMenus = () => navigate('/whatsapp-bot/menus-bot')
 
   return (
     <>
@@ -337,65 +313,34 @@ const OpcionesMenuBot = () => {
         <CCardHeader className="d-flex justify-content-between align-items-center">
           <div>
             <strong>Opciones del Menú</strong>
-            {menuActual && (
-              <div className="small text-body-secondary">
-                {menuActual.code} - {menuActual.name}
-              </div>
-            )}
+            {menuActual && <div className="small text-body-secondary">{menuActual.code} - {menuActual.name}</div>}
           </div>
-
           <div>
-            <CButton color="secondary" variant="outline" className="me-2" onClick={volverMenus}>
-              Volver
-            </CButton>
-
-            <CButton color="primary" onClick={abrirCrear}>
-              Nueva opción
-            </CButton>
+            <CButton color="secondary" variant="outline" className="me-2" onClick={volverMenus}>Volver</CButton>
+            <CButton color="primary" onClick={abrirCrear}>Nueva opción</CButton>
           </div>
         </CCardHeader>
-
         <CCardBody>
-          {error && (
-            <CAlert color="danger" dismissible onClose={() => setError('')}>
-              {error}
-            </CAlert>
-          )}
-
-          {success && (
-            <CAlert color="success" dismissible onClose={() => setSuccess('')}>
-              {success}
-            </CAlert>
-          )}
-
+          {error && <CAlert color="danger" dismissible onClose={() => setError('')}>{error}</CAlert>}
+          {success && <CAlert color="success" dismissible onClose={() => setSuccess('')}>{success}</CAlert>}
           {menuActual && (
             <CAlert color="info">
               <strong>Mensaje del menú:</strong>
               <div style={{ whiteSpace: 'pre-wrap' }}>{menuActual.message}</div>
             </CAlert>
           )}
-
           <CRow className="mb-3">
             <CCol md={5}>
               <CFormLabel>Buscar opción</CFormLabel>
-              <CFormInput
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Buscar por código, texto o acción"
-              />
+              <CFormInput value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por código, texto o acción" />
             </CCol>
-
             <CCol md={3} className="d-flex align-items-end">
-              <CButton color="primary" variant="outline" className="w-100" onClick={cargarOpciones}>
-                Actualizar
-              </CButton>
+              <CButton color="primary" variant="outline" className="w-100" onClick={cargarOpciones}>Actualizar</CButton>
             </CCol>
           </CRow>
 
           {loading ? (
-            <div className="text-center my-4">
-              <CSpinner color="primary" />
-            </div>
+            <div className="text-center my-4"><CSpinner color="primary" /></div>
           ) : (
             <CTable hover responsive align="middle">
               <CTableHead color="light">
@@ -409,89 +354,24 @@ const OpcionesMenuBot = () => {
                   <CTableHeaderCell className="text-end">Acciones</CTableHeaderCell>
                 </CTableRow>
               </CTableHead>
-
               <CTableBody>
                 {opcionesFiltradas.length === 0 ? (
-                  <CTableRow>
-                    <CTableDataCell colSpan={7} className="text-center">
-                      No existen opciones registradas para este menú.
-                    </CTableDataCell>
-                  </CTableRow>
+                  <CTableRow><CTableDataCell colSpan={7} className="text-center">No existen opciones registradas.</CTableDataCell></CTableRow>
                 ) : (
                   opcionesFiltradas.map((option) => (
                     <CTableRow key={option.id}>
-                      <CTableDataCell>
-                        <CBadge color="info">{option.order}</CBadge>
-                      </CTableDataCell>
-
+                      <CTableDataCell><CBadge color="info">{option.order}</CBadge></CTableDataCell>
                       <CTableDataCell>{option.code || '-'}</CTableDataCell>
-
                       <CTableDataCell>{option.optionText || '-'}</CTableDataCell>
-
-                      <CTableDataCell>
-                        <CBadge color="primary">{obtenerLabelAccion(option.action)}</CBadge>
-                      </CTableDataCell>
-
+                      <CTableDataCell><CBadge color="primary">{obtenerLabelAccion(option.action)}</CBadge></CTableDataCell>
                       <CTableDataCell>{option.targetMenuId ? obtenerNombreMenu(option.targetMenuId) : '-'}</CTableDataCell>
-
-                      <CTableDataCell>
-                        {option.isActive === false ? (
-                          <CBadge color="danger">Inactiva</CBadge>
-                        ) : (
-                          <CBadge color="success">Activa</CBadge>
-                        )}
-                      </CTableDataCell>
-
+                      <CTableDataCell>{option.isActive === false ? <CBadge color="danger">Inactiva</CBadge> : <CBadge color="success">Activa</CBadge>}</CTableDataCell>
                       <CTableDataCell className="text-end">
-                        <CButton
-                          color="secondary"
-                          variant="outline"
-                          size="sm"
-                          className="me-2 mb-1"
-                          onClick={() => moverOrden(option, 'UP')}
-                        >
-                          Subir
-                        </CButton>
-
-                        <CButton
-                          color="secondary"
-                          variant="outline"
-                          size="sm"
-                          className="me-2 mb-1"
-                          onClick={() => moverOrden(option, 'DOWN')}
-                        >
-                          Bajar
-                        </CButton>
-
-                        <CButton
-                          color="warning"
-                          variant="outline"
-                          size="sm"
-                          className="me-2 mb-1"
-                          onClick={() => abrirEditar(option)}
-                        >
-                          Editar
-                        </CButton>
-
-                        <CButton
-                          color={option.isActive === false ? 'success' : 'danger'}
-                          variant="outline"
-                          size="sm"
-                          className="me-2 mb-1"
-                          onClick={() => cambiarEstado(option)}
-                        >
-                          {option.isActive === false ? 'Activar' : 'Inactivar'}
-                        </CButton>
-
-                        <CButton
-                          color="danger"
-                          variant="outline"
-                          size="sm"
-                          className="mb-1"
-                          onClick={() => eliminarOpcion(option)}
-                        >
-                          Eliminar
-                        </CButton>
+                        <CButton color="secondary" variant="outline" size="sm" className="me-2 mb-1" onClick={() => moverOrden(option, 'UP')}>Subir</CButton>
+                        <CButton color="secondary" variant="outline" size="sm" className="me-2 mb-1" onClick={() => moverOrden(option, 'DOWN')}>Bajar</CButton>
+                        <CButton color="warning" variant="outline" size="sm" className="me-2 mb-1" onClick={() => abrirEditar(option)}>Editar</CButton>
+                        <CButton color={option.isActive === false ? 'success' : 'danger'} variant="outline" size="sm" className="me-2 mb-1" onClick={() => cambiarEstado(option)}>{option.isActive === false ? 'Activar' : 'Inactivar'}</CButton>
+                        <CButton color="danger" variant="outline" size="sm" className="mb-1" onClick={() => eliminarOpcion(option)}>Eliminar</CButton>
                       </CTableDataCell>
                     </CTableRow>
                   ))
@@ -502,114 +382,51 @@ const OpcionesMenuBot = () => {
         </CCardBody>
       </CCard>
 
+      {/* Modal de Confirmación */}
+      <CModal visible={confirmData.visible} onClose={() => setConfirmData({ ...confirmData, visible: false })}>
+        <CModalHeader><CModalTitle>Confirmar acción</CModalTitle></CModalHeader>
+        <CModalBody>{confirmData.message}</CModalBody>
+        <CModalFooter>
+          <CButton color="secondary" variant="outline" onClick={() => setConfirmData({ ...confirmData, visible: false })}>Cancelar</CButton>
+          <CButton color="primary" onClick={confirmData.onConfirm}>Confirmar</CButton>
+        </CModalFooter>
+      </CModal>
+
       <CModal visible={visibleForm} onClose={cerrarForm} backdrop="static" size="lg">
-        <CModalHeader>
-          <CModalTitle>{editingOption ? 'Editar opción' : 'Nueva opción'}</CModalTitle>
-        </CModalHeader>
-
+        <CModalHeader><CModalTitle>{editingOption ? 'Editar opción' : 'Nueva opción'}</CModalTitle></CModalHeader>
         <CModalBody>
-          {modalError && (
-            <CAlert color="danger" dismissible onClose={() => setModalError('')}>
-              {modalError}
-            </CAlert>
-          )}
-
+          {modalError && <CAlert color="danger" dismissible onClose={() => setModalError('')}>{modalError}</CAlert>}
           <CRow className="g-3">
-            <CCol md={4}>
-              <CFormLabel>Código</CFormLabel>
-              <CFormInput
-                name="code"
-                value={form.code}
-                onChange={handleChange}
-                placeholder="Ej: 1"
-              />
-            </CCol>
-
-            <CCol md={4}>
-              <CFormLabel>Orden</CFormLabel>
-              <CFormInput
-                type="number"
-                name="order"
-                value={form.order}
-                onChange={handleChange}
-                min={1}
-              />
-            </CCol>
-
+            <CCol md={4}><CFormLabel>Código</CFormLabel><CFormInput name="code" value={form.code} onChange={handleChange} placeholder="Ej: 1" /></CCol>
+            <CCol md={4}><CFormLabel>Orden</CFormLabel><CFormInput type="number" name="order" value={form.order} onChange={handleChange} min={1} /></CCol>
             <CCol md={4}>
               <CFormLabel>Estado</CFormLabel>
-              <CFormSelect
-                name="isActive"
-                value={String(form.isActive)}
-                onChange={(e) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    isActive: e.target.value === 'true',
-                  }))
-                }
-              >
-                <option value="true">Activa</option>
-                <option value="false">Inactiva</option>
+              <CFormSelect name="isActive" value={String(form.isActive)} onChange={(e) => setForm((prev) => ({ ...prev, isActive: e.target.value === 'true' }))}>
+                <option value="true">Activa</option><option value="false">Inactiva</option>
               </CFormSelect>
             </CCol>
-
-            <CCol md={12}>
-              <CFormLabel>Texto de opción</CFormLabel>
-              <CFormInput
-                name="optionText"
-                value={form.optionText}
-                onChange={handleChange}
-                placeholder="Ej: Agendar cita médica"
-              />
-            </CCol>
-
+            <CCol md={12}><CFormLabel>Texto de opción</CFormLabel><CFormInput name="optionText" value={form.optionText} onChange={handleChange} placeholder="Ej: Agendar cita médica" /></CCol>
             <CCol md={6}>
               <CFormLabel>Acción</CFormLabel>
               <CFormSelect name="action" value={form.action} onChange={handleChange}>
                 <option value="">Seleccione una acción</option>
-                {accionesBot.map((accion) => (
-                  <option key={accion.value} value={accion.value}>
-                    {accion.label}
-                  </option>
-                ))}
+                {accionesBot.map((accion) => <option key={accion.value} value={accion.value}>{accion.label}</option>)}
               </CFormSelect>
             </CCol>
-
             <CCol md={6}>
               <CFormLabel>Menú destino</CFormLabel>
-              <CFormSelect
-                name="targetMenuId"
-                value={form.targetMenuId || ''}
-                onChange={handleChange}
-              >
+              <CFormSelect name="targetMenuId" value={form.targetMenuId || ''} onChange={handleChange}>
                 <option value="">Sin menú destino</option>
-                {menus
-                  .filter((menu) => menu.id !== menuId && menu.isActive !== false)
-                  .map((menu) => (
-                    <option key={menu.id} value={menu.id}>
-                      {menu.code} - {menu.name}
-                    </option>
-                  ))}
+                {menus.filter((menu) => menu.id !== menuId && menu.isActive !== false).map((menu) => (
+                  <option key={menu.id} value={menu.id}>{menu.code} - {menu.name}</option>
+                ))}
               </CFormSelect>
             </CCol>
           </CRow>
         </CModalBody>
-
         <CModalFooter>
-          <CButton color="secondary" variant="outline" onClick={cerrarForm}>
-            Cancelar
-          </CButton>
-
-          <CButton color="primary" onClick={guardarOpcion} disabled={saving}>
-            {saving ? (
-              <>
-                <CSpinner size="sm" className="me-2" />
-                Guardando...
-              </>
-            ) : (
-              'Guardar'
-            )}
-          </CButton>
+          <CButton color="secondary" variant="outline" onClick={cerrarForm}>Cancelar</CButton>
+          <CButton color="primary" onClick={guardarOpcion} disabled={saving}>{saving ? <><CSpinner size="sm" className="me-2" /> Guardando...</> : 'Guardar'}</CButton>
         </CModalFooter>
       </CModal>
     </>

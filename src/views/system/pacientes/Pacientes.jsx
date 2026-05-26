@@ -58,7 +58,23 @@ const Pacientes = () => {
   const [modalError, setModalError] = useState('')
   const [success, setSuccess] = useState('')
 
+  // Estado del modal de confirmación dinámico unificado
+  const [confirmModal, setConfirmModal] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    onConfirm: null,
+  })
+
   const navigate = useNavigate()
+
+  // Temporizador para limpiar alertas de éxito automáticamente
+  useEffect(() => {
+    if (success) {
+      const timer = setTimeout(() => setSuccess(''), 3500)
+      return () => clearTimeout(timer)
+    }
+  }, [success])
 
   const cargarPacientes = async () => {
     try {
@@ -205,28 +221,55 @@ const Pacientes = () => {
     }
   }
 
-  const eliminarPaciente = async (patient) => {
-    const confirmar = window.confirm(
-      `¿Seguro que deseas inactivar al paciente ${patient.firstName} ${patient.lastName}?`,
-    )
+  // Abre el modal dinámico según el estado actual del paciente
+  const confirmarAlternarEstadoPaciente = (patient) => {
+    const accion = patient.isActive ? 'inactivar' : 'activar'
+    setConfirmModal({
+      visible: true,
+      title: `${accion.charAt(0).toUpperCase() + accion.slice(1)} Paciente`,
+      message: `¿Seguro que deseas ${accion} al paciente ${patient.firstName} ${patient.lastName}?`,
+      onConfirm: () => ejecutarAlternarEstado(patient),
+    })
+  }
 
-    if (!confirmar) return
-
+  const ejecutarAlternarEstado = async (patient) => {
+    setConfirmModal((prev) => ({ ...prev, visible: false }))
     try {
       setLoading(true)
       setError('')
       setSuccess('')
 
-      await patientService.eliminar(patient.id)
+      if (patient.isActive) {
+        await patientService.eliminar(patient.id)
+        setSuccess('Paciente inactivado correctamente.')
+      } else {
+        const payload = {
+          identificationType: patient.identificationType,
+          identification: patient.identification,
+          firstName: patient.firstName,
+          lastName: patient.lastName,
+          birthDate: patient.birthDate,
+          gender: patient.gender,
+          email: patient.email,
+          whatsappPhone: patient.whatsappPhone,
+          address: patient.address,
+          isActive: true,
+        }
+        await patientService.actualizar(patient.id, payload)
+        setSuccess('Paciente activado correctamente.')
+      }
 
-      setSuccess('Paciente inactivado correctamente.')
       await cargarPacientes()
     } catch (err) {
       console.error(err)
-      setError('No se pudo inactivar el paciente.')
+      setError('No se pudo cambiar el estado del paciente.')
     } finally {
       setLoading(false)
     }
+  }
+
+  const cerrarConfirmModal = () => {
+    setConfirmModal((prev) => ({ ...prev, visible: false }))
   }
 
   const limpiarFiltros = () => {
@@ -439,14 +482,13 @@ const Pacientes = () => {
                         </CButton>
 
                         <CButton
-                          color="danger"
+                          color={patient.isActive ? 'danger' : 'success'}
                           variant="outline"
                           size="sm"
                           className="mb-1"
-                          disabled={!patient.isActive}
-                          onClick={() => eliminarPaciente(patient)}
+                          onClick={() => confirmarAlternarEstadoPaciente(patient)}
                         >
-                          Inactivar
+                          {patient.isActive ? 'Inactivar' : 'Activar'}
                         </CButton>
                       </CTableDataCell>
                     </CTableRow>
@@ -458,6 +500,7 @@ const Pacientes = () => {
         </CCardBody>
       </CCard>
 
+      {/* MODAL FORMULARIO */}
       <CModal visible={visible} onClose={cerrarModal} backdrop="static" size="lg">
         <CModalHeader>
           <CModalTitle>{editingPatient ? 'Editar paciente' : 'Nuevo paciente'}</CModalTitle>
@@ -589,6 +632,27 @@ const Pacientes = () => {
             ) : (
               'Guardar'
             )}
+          </CButton>
+        </CModalFooter>
+      </CModal>
+
+      {/* MODAL DE CONFIRMACIÓN DINÁMICO UNIFICADO */}
+      <CModal visible={confirmModal.visible} onClose={cerrarConfirmModal} backdrop="static">
+        <CModalHeader>
+          <CModalTitle>{confirmModal.title}</CModalTitle>
+        </CModalHeader>
+        <CModalBody>
+          <p>{confirmModal.message}</p>
+        </CModalBody>
+        <CModalFooter>
+          <CButton color="secondary" variant="outline" onClick={cerrarConfirmModal}>
+            Cancelar
+          </CButton>
+          <CButton 
+            color={confirmModal.title?.includes('Activar') ? 'success' : 'danger'} 
+            onClick={confirmModal.onConfirm}
+          >
+            Confirmar
           </CButton>
         </CModalFooter>
       </CModal>

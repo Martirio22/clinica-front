@@ -48,6 +48,22 @@ const EstadosCita = () => {
   const [modalError, setModalError] = useState('')
   const [success, setSuccess] = useState('')
 
+  // Estado estructurado para el modal de confirmación dinámico
+  const [confirmModal, setConfirmModal] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    onConfirm: null,
+  })
+
+  // Temporizador para desvanecer la alerta de éxito automáticamente (3500ms)
+  useEffect(() => {
+    if (success) {
+      const timer = setTimeout(() => setSuccess(''), 3500)
+      return () => clearTimeout(timer)
+    }
+  }, [success])
+
   const cargarEstados = async () => {
     try {
       setLoading(true)
@@ -174,75 +190,62 @@ const EstadosCita = () => {
     }
   }
 
-  const eliminarEstado = async (status) => {
-    const confirmar = window.confirm(`¿Seguro que deseas inactivar el estado ${status.name}?`)
+  // Prepara y despliega el modal dinámico de confirmación de estado (Activar / Inactivar)
+  const confirmarAlternarEstadoCita = (status) => {
+    const accion = status.isActive ? 'inactivar' : 'activar'
+    setConfirmModal({
+      visible: true,
+      title: `${accion.charAt(0).toUpperCase() + accion.slice(1)} Estado de Cita`,
+      message: `¿Seguro que deseas ${accion} el estado de cita "${status.name}"?`,
+      onConfirm: () => ejecutarAlternarEstado(status),
+    })
+  }
 
-    if (!confirmar) return
-
+  const ejecutarAlternarEstado = async (status) => {
+    setConfirmModal((prev) => ({ ...prev, visible: false }))
     try {
       setLoading(true)
       setError('')
       setSuccess('')
 
-      await appointmentStatusService.eliminar(status.id)
+      if (status.isActive) {
+        await appointmentStatusService.eliminar(status.id)
+        setSuccess('Estado de cita inactivado correctamente.')
+      } else {
+        const payload = {
+          code: status.code,
+          name: status.name,
+          description: status.description || null,
+          isActive: true,
+        }
+        await appointmentStatusService.actualizar(status.id, payload)
+        setSuccess('Estado de cita activado correctamente.')
+      }
 
-      setSuccess('Estado de cita inactivado correctamente.')
       await cargarEstados()
     } catch (err) {
       console.error(err)
-      setError(err?.data?.message || err?.message || 'No se pudo inactivar el estado de cita.')
+      setError(err?.data?.message || err?.message || 'No se pudo cambiar el estado del estado de cita.')
     } finally {
       setLoading(false)
     }
   }
 
+  const cerrarConfirmModal = () => {
+    setConfirmModal((prev) => ({ ...prev, visible: false }))
+  }
+
   const crearEstadosBase = async () => {
     const estadosBase = [
-      {
-        code: 'RESERVADA',
-        name: 'Pendiente',
-        description: 'Cita reservada',
-      },
-      {
-        code: 'CONFIRMADA',
-        name: 'Confirmada',
-        description: 'Cita confirmada por el paciente',
-      },
-      {
-        code: 'EN_ESPERA',
-        name: 'En espera',
-        description: 'Cita en espera',
-      },
-      {
-        code: 'CANCELADA',
-        name: 'Cancelada',
-        description: 'Cita cancelada',
-      },
-      {
-        code: 'COMPLETADA',
-        name: 'Completada',
-        description: 'Cita atendida correctamente',
-      },
-      {
-        code: 'ATENDIDA',
-        name: 'ATENDIDA',
-        description: 'La cita ya fue atentida',
-      },
-      {
-        code: 'NO_ASISTIO',
-        name: 'No asistió',
-        description: 'El paciente no se presentó',
-      },
-      {
-        code: 'REPROGRAMADA',
-        name: 'Reprogramada',
-        description: 'La cita fue reprogramada',
-      },
-      {
-        code: 'EXPIRADA',
-        name: 'Expirada',
-        description: 'La cita fue expirada',
-      },
+      { code: 'RESERVADA', name: 'Pendiente', description: 'Cita reservada' },
+      { code: 'CONFIRMADA', name: 'Confirmada', description: 'Cita confirmada por el paciente' },
+      { code: 'EN_ESPERA', name: 'En espera', description: 'Cita en espera' },
+      { code: 'CANCELADA', name: 'Cancelada', description: 'Cita cancelada' },
+      { code: 'COMPLETADA', name: 'Completada', description: 'Cita atendida correctamente' },
+      { code: 'ATENDIDA', name: 'ATENDIDA', description: 'La cita ya fue atendida' },
+      { code: 'NO_ASISTIO', name: 'No asistió', description: 'El paciente no se presentó' },
+      { code: 'REPROGRAMADA', name: 'Reprogramada', description: 'La cita fue reprogramada' },
+      { code: 'EXPIRADA', name: 'Expirada', description: 'La cita fue expirada' },
     ]
 
     try {
@@ -277,8 +280,8 @@ const EstadosCita = () => {
         <CCardHeader className="d-flex justify-content-between align-items-center">
           <strong>Estados de Cita</strong>
 
-          <div>
-            <CButton color="info" variant="outline" className="me-2" onClick={crearEstadosBase}>
+          <div className="d-flex gap-2">
+            <CButton color="success" variant="outline" onClick={crearEstadosBase}>
               Crear estados base
             </CButton>
 
@@ -364,13 +367,12 @@ const EstadosCita = () => {
                         </CButton>
 
                         <CButton
-                          color="danger"
+                          color={status.isActive ? 'danger' : 'success'}
                           variant="outline"
                           size="sm"
-                          disabled={!status.isActive}
-                          onClick={() => eliminarEstado(status)}
+                          onClick={() => confirmarAlternarEstadoCita(status)}
                         >
-                          Inactivar
+                          {status.isActive ? 'Inactivar' : 'Activar'}
                         </CButton>
                       </CTableDataCell>
                     </CTableRow>
@@ -382,6 +384,7 @@ const EstadosCita = () => {
         </CCardBody>
       </CCard>
 
+      {/* MODAL FORMULARIO */}
       <CModal visible={visible} onClose={cerrarModal} backdrop="static">
         <CModalHeader>
           <CModalTitle>{editingStatus ? 'Editar estado de cita' : 'Nuevo estado de cita'}</CModalTitle>
@@ -449,6 +452,27 @@ const EstadosCita = () => {
             ) : (
               'Guardar'
             )}
+          </CButton>
+        </CModalFooter>
+      </CModal>
+
+      {/* MODAL DE CONFIRMACIÓN DINÁMICO */}
+      <CModal visible={confirmModal.visible} onClose={cerrarConfirmModal} backdrop="static">
+        <CModalHeader>
+          <CModalTitle>{confirmModal.title}</CModalTitle>
+        </CModalHeader>
+        <CModalBody>
+          <p>{confirmModal.message}</p>
+        </CModalBody>
+        <CModalFooter>
+          <CButton color="secondary" variant="outline" onClick={cerrarConfirmModal}>
+            Cancelar
+          </CButton>
+          <CButton 
+            color={confirmModal.title?.includes('Activar') ? 'success' : 'danger'} 
+            onClick={confirmModal.onConfirm}
+          >
+            Confirmar
           </CButton>
         </CModalFooter>
       </CModal>

@@ -50,11 +50,18 @@ const Sucursales = () => {
   const [modalError, setModalError] = useState('')
   const [success, setSuccess] = useState('')
 
+  // Estado del modal de confirmación unificado (Alineación superior estándar de la app)
+  const [confirmModal, setConfirmModal] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    onConfirm: null,
+  })
+
   const cargarSucursales = async () => {
     try {
       setLoading(true)
       setError('')
-
       const data = await branchService.listar()
       setSucursales(data || [])
     } catch (err) {
@@ -80,7 +87,6 @@ const Sucursales = () => {
 
   const abrirModalEditar = (branch) => {
     setEditingBranch(branch)
-
     setForm({
       name: branch.name || '',
       address: branch.address || '',
@@ -90,7 +96,6 @@ const Sucursales = () => {
       longitude: branch.longitude ?? '',
       isActive: branch.isActive ?? true,
     })
-
     setError('')
     setModalError('')
     setSuccess('')
@@ -106,7 +111,6 @@ const Sucursales = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target
-
     setForm((prev) => ({
       ...prev,
       [name]: value,
@@ -131,18 +135,15 @@ const Sucursales = () => {
     if (latitude && Number.isNaN(Number(latitude))) {
       return 'La latitud debe ser un número válido.'
     }
-
     if (longitude && Number.isNaN(Number(longitude))) {
       return 'La longitud debe ser un número válido.'
     }
-
     return ''
   }
 
   const guardarSucursal = async () => {
     try {
       const mensajeValidacion = validarFormulario()
-
       if (mensajeValidacion) {
         setModalError(mensajeValidacion)
         return
@@ -183,26 +184,54 @@ const Sucursales = () => {
     }
   }
 
-  const eliminarSucursal = async (branch) => {
-    const confirmar = window.confirm(`¿Seguro que deseas inactivar la sucursal ${branch.name}?`)
+  // Configura el modal dinámico para Activar o Inactivar
+  const confirmarAlternarEstadoBranch = (branch) => {
+    const accion = branch.isActive ? 'inactivar' : 'activar'
+    setConfirmModal({
+      visible: true,
+      title: `${accion.charAt(0).toUpperCase() + accion.slice(1)} Sucursal`,
+      message: `¿Seguro que deseas ${accion} la sucursal ${branch.name}?`,
+      onConfirm: () => ejecutarAlternarEstado(branch),
+    })
+  }
 
-    if (!confirmar) return
-
+  const ejecutarAlternarEstado = async (branch) => {
+    setConfirmModal((prev) => ({ ...prev, visible: false }))
     try {
       setLoading(true)
       setError('')
       setSuccess('')
 
-      await branchService.eliminar(branch.id)
+      if (branch.isActive) {
+        // Inactivación lógica tradicional
+        await branchService.eliminar(branch.id)
+        setSuccess('Sucursal inactivada correctamente.')
+      } else {
+        // Activación lógica mediante actualización del estado
+        const payload = {
+          name: branch.name,
+          address: branch.address,
+          city: branch.city,
+          phone: branch.phone,
+          latitude: branch.latitude,
+          longitude: branch.longitude,
+          isActive: true,
+        }
+        await branchService.actualizar(branch.id, payload)
+        setSuccess('Sucursal activada correctamente.')
+      }
 
-      setSuccess('Sucursal inactivada correctamente.')
       await cargarSucursales()
     } catch (err) {
       console.error(err)
-      setError('No se pudo inactivar la sucursal.')
+      setError('No se pudo cambiar el estado de la sucursal.')
     } finally {
       setLoading(false)
     }
+  }
+
+  const cerrarConfirmModal = () => {
+    setConfirmModal((prev) => ({ ...prev, visible: false }))
   }
 
   const usarUbicacionActual = () => {
@@ -231,7 +260,6 @@ const Sucursales = () => {
       <CCard>
         <CCardHeader className="d-flex justify-content-between align-items-center">
           <strong>Administración de Sucursales</strong>
-
           <CButton color="primary" onClick={abrirModalCrear}>
             Nueva Sucursal
           </CButton>
@@ -308,13 +336,12 @@ const Sucursales = () => {
                         </CButton>
 
                         <CButton
-                          color="danger"
+                          color={branch.isActive ? 'danger' : 'success'}
                           variant="outline"
                           size="sm"
-                          disabled={!branch.isActive}
-                          onClick={() => eliminarSucursal(branch)}
+                          onClick={() => confirmarAlternarEstadoBranch(branch)}
                         >
-                          Inactivar
+                          {branch.isActive ? 'Inactivar' : 'Activar'}
                         </CButton>
                       </CTableDataCell>
                     </CTableRow>
@@ -326,6 +353,7 @@ const Sucursales = () => {
         </CCardBody>
       </CCard>
 
+      {/* MODAL FORMULARIO DE CREACIÓN/EDICIÓN */}
       <CModal visible={visible} onClose={cerrarModal} backdrop="static" size="lg">
         <CModalHeader>
           <CModalTitle>{editingBranch ? 'Editar Sucursal' : 'Nueva Sucursal'}</CModalTitle>
@@ -423,7 +451,6 @@ const Sucursales = () => {
           <CButton color="secondary" variant="outline" onClick={cerrarModal}>
             Cancelar
           </CButton>
-
           <CButton color="primary" onClick={guardarSucursal} disabled={saving}>
             {saving ? (
               <>
@@ -433,6 +460,24 @@ const Sucursales = () => {
             ) : (
               'Guardar'
             )}
+          </CButton>
+        </CModalFooter>
+      </CModal>
+
+      {/* MODAL DE CONFIRMACIÓN - CORREGIDO (Alineado arriba e idéntico a Roles/Usuarios/Consultorios) */}
+      <CModal visible={confirmModal.visible} onClose={cerrarConfirmModal} backdrop="static">
+        <CModalHeader>
+          <CModalTitle>{confirmModal.title}</CModalTitle>
+        </CModalHeader>
+        <CModalBody>
+          <p>{confirmModal.message}</p>
+        </CModalBody>
+        <CModalFooter>
+          <CButton color="secondary" variant="outline" onClick={cerrarConfirmModal}>
+            Cancelar
+          </CButton>
+          <CButton color={confirmModal.title?.includes('Activar') ? 'success' : 'danger'} onClick={confirmModal.onConfirm}>
+            Confirmar
           </CButton>
         </CModalFooter>
       </CModal>

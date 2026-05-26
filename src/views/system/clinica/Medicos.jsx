@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   CAlert,
   CBadge,
@@ -38,6 +39,7 @@ const initialForm = {
 }
 
 const Medicos = () => {
+  const navigate = useNavigate()
   const [medicos, setMedicos] = useState([])
   const [usuariosMedicos, setUsuariosMedicos] = useState([])
   const [especialidades, setEspecialidades] = useState([])
@@ -55,6 +57,14 @@ const Medicos = () => {
   const [error, setError] = useState('')
   const [modalError, setModalError] = useState('')
   const [success, setSuccess] = useState('')
+
+  // Estado del modal de confirmación dinámico unificado
+  const [confirmModal, setConfirmModal] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    onConfirm: null,
+  })
 
   const cargarUsuariosMedicos = async () => {
     try {
@@ -80,7 +90,6 @@ const Medicos = () => {
     try {
       setLoading(true)
       setError('')
-
       const data = await doctorService.listar()
       setMedicos(data || [])
     } catch (err) {
@@ -158,9 +167,7 @@ const Medicos = () => {
 
   const obtenerNombreUsuario = (userId) => {
     const usuario = obtenerUsuarioMedico(userId)
-
     if (!usuario) return '-'
-
     return `${usuario.firstName || ''} ${usuario.lastName || ''}`.trim()
   }
 
@@ -183,7 +190,6 @@ const Medicos = () => {
 
   const abrirModalEditar = (doctor) => {
     setEditingDoctor(doctor)
-
     setForm({
       userId: doctor.userId || '',
       specialtyId: doctor.specialtyId || '',
@@ -191,7 +197,6 @@ const Medicos = () => {
       appointmentDurationMinutes: doctor.appointmentDurationMinutes || 30,
       isActive: doctor.isActive ?? true,
     })
-
     setError('')
     setModalError('')
     setSuccess('')
@@ -207,7 +212,6 @@ const Medicos = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target
-
     setForm((prev) => ({
       ...prev,
       [name]: value,
@@ -229,18 +233,15 @@ const Medicos = () => {
     }
 
     const duration = Number(form.appointmentDurationMinutes)
-
     if (!duration || duration <= 0) {
       return 'La duración de la cita debe ser mayor a 0.'
     }
-
     return ''
   }
 
   const guardarMedico = async () => {
     try {
       const mensajeValidacion = validarFormulario()
-
       if (mensajeValidacion) {
         setModalError(mensajeValidacion)
         return
@@ -281,21 +282,39 @@ const Medicos = () => {
     }
   }
 
-  const eliminarMedico = async (doctor) => {
+  // Abre el modal dinámico según la acción requerida
+  const confirmarAlternarEstadoMedico = (doctor) => {
     const nombre = obtenerNombreUsuario(doctor.userId)
+    const accion = doctor.isActive ? 'inactivar' : 'activar'
+    setConfirmModal({
+      visible: true,
+      title: `${accion.charAt(0).toUpperCase() + accion.slice(1)} Médico`,
+      message: `¿Seguro que deseas ${accion} al médico ${nombre}?`,
+      onConfirm: () => ejecutarAlternarEstado(doctor),
+    })
+  }
 
-    const confirmar = window.confirm(`¿Seguro que deseas inactivar al médico ${nombre}?`)
-
-    if (!confirmar) return
-
+  const ejecutarAlternarEstado = async (doctor) => {
+    setConfirmModal((prev) => ({ ...prev, visible: false }))
     try {
       setLoading(true)
       setError('')
       setSuccess('')
 
-      await doctorService.eliminar(doctor.id)
-
-      setSuccess('Médico inactivado correctamente.')
+      if (doctor.isActive) {
+        await doctorService.eliminar(doctor.id)
+        setSuccess('Médico inactivado correctamente.')
+      } else {
+        const payload = {
+          userId: doctor.userId,
+          specialtyId: doctor.specialtyId,
+          professionalRegistry: doctor.professionalRegistry,
+          appointmentDurationMinutes: doctor.appointmentDurationMinutes,
+          isActive: true,
+        }
+        await doctorService.actualizar(doctor.id, payload)
+        setSuccess('Médico activado correctamente.')
+      }
 
       if (filtroSpecialtyId) {
         await cargarMedicosPorEspecialidad(filtroSpecialtyId)
@@ -304,22 +323,29 @@ const Medicos = () => {
       }
     } catch (err) {
       console.error(err)
-      setError('No se pudo inactivar el médico.')
+      setError('No se pudo cambiar el estado del médico.')
     } finally {
       setLoading(false)
     }
   }
 
+  const cerrarConfirmModal = () => {
+    setConfirmModal((prev) => ({ ...prev, visible: false }))
+  }
+
+  // ==========================================
+  // LAS FUNCIONES QUE MODIFICAMOS AHORA:
+  // ==========================================
   const irHorarios = (doctor) => {
-    alert(`Aquí puedes redirigir a horarios del médico: ${doctor.id}`)
+    navigate(`/agenda/horarios-medicos`)
   }
 
   const irBloqueos = (doctor) => {
-    alert(`Aquí puedes redirigir a bloqueos del médico: ${doctor.id}`)
+    navigate(`/agenda/bloqueo-agenda`)
   }
 
   const configurarHorario = (doctor) => {
-    alert(`Aquí puedes abrir la pantalla para configurar horario del médico: ${doctor.id}`)
+    navigate(`/agenda/horarios-medicos`)
   }
 
   return (
@@ -327,7 +353,6 @@ const Medicos = () => {
       <CCard>
         <CCardHeader className="d-flex justify-content-between align-items-center">
           <strong>Administración de Médicos</strong>
-
           <CButton color="primary" onClick={abrirModalCrear}>
             Nuevo médico
           </CButton>
@@ -360,7 +385,6 @@ const Medicos = () => {
               <CFormLabel>Filtrar por especialidad</CFormLabel>
               <CFormSelect value={filtroSpecialtyId} onChange={handleFiltroEspecialidad}>
                 <option value="">Todas las especialidades</option>
-
                 {especialidades.map((specialty) => (
                   <option key={specialty.id} value={specialty.id}>
                     {specialty.name}
@@ -410,9 +434,7 @@ const Medicos = () => {
                       </CTableDataCell>
 
                       <CTableDataCell>{obtenerNombreEspecialidad(doctor.specialtyId)}</CTableDataCell>
-
                       <CTableDataCell>{doctor.professionalRegistry}</CTableDataCell>
-
                       <CTableDataCell>{doctor.appointmentDurationMinutes} min</CTableDataCell>
 
                       <CTableDataCell>
@@ -465,14 +487,13 @@ const Medicos = () => {
                         </CButton>
 
                         <CButton
-                          color="danger"
+                          color={doctor.isActive ? 'danger' : 'success'}
                           variant="outline"
                           size="sm"
                           className="mb-1"
-                          disabled={!doctor.isActive}
-                          onClick={() => eliminarMedico(doctor)}
+                          onClick={() => confirmarAlternarEstadoMedico(doctor)}
                         >
-                          Inactivar
+                          {doctor.isActive ? 'Inactivar' : 'Activar'}
                         </CButton>
                       </CTableDataCell>
                     </CTableRow>
@@ -484,6 +505,7 @@ const Medicos = () => {
         </CCardBody>
       </CCard>
 
+      {/* MODAL FORMULARIO */}
       <CModal visible={visible} onClose={cerrarModal} backdrop="static" size="lg">
         <CModalHeader>
           <CModalTitle>{editingDoctor ? 'Editar médico' : 'Nuevo médico'}</CModalTitle>
@@ -506,7 +528,6 @@ const Medicos = () => {
                 disabled={!!editingDoctor}
               >
                 <option value="">Seleccione un usuario con rol médico</option>
-
                 {usuariosMedicos
                   .filter((user) => user.isActive)
                   .map((user) => (
@@ -525,7 +546,6 @@ const Medicos = () => {
                 onChange={handleChange}
               >
                 <option value="">Seleccione una especialidad</option>
-
                 {especialidades
                   .filter((specialty) => specialty.isActive)
                   .map((specialty) => (
@@ -572,7 +592,6 @@ const Medicos = () => {
           <CButton color="secondary" variant="outline" onClick={cerrarModal}>
             Cancelar
           </CButton>
-
           <CButton color="primary" onClick={guardarMedico} disabled={saving}>
             {saving ? (
               <>
@@ -582,6 +601,24 @@ const Medicos = () => {
             ) : (
               'Guardar'
             )}
+          </CButton>
+        </CModalFooter>
+      </CModal>
+
+      {/* MODAL DE CONFIRMACIÓN */}
+      <CModal visible={confirmModal.visible} onClose={cerrarConfirmModal} backdrop="static">
+        <CModalHeader>
+          <CModalTitle>{confirmModal.title}</CModalTitle>
+        </CModalHeader>
+        <CModalBody>
+          <p>{confirmModal.message}</p>
+        </CModalBody>
+        <CModalFooter>
+          <CButton color="secondary" variant="outline" onClick={cerrarConfirmModal}>
+            Cancelar
+          </CButton>
+          <CButton color={confirmModal.title?.includes('Activar') ? 'success' : 'danger'} onClick={confirmModal.onConfirm}>
+            Confirmar
           </CButton>
         </CModalFooter>
       </CModal>

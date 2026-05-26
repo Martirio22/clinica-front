@@ -53,6 +53,15 @@ const Usuarios = () => {
   const [visible, setVisible] = useState(false)
   const [visibleRoles, setVisibleRoles] = useState(false)
 
+  // Estado del modal de confirmación unificado
+  const [confirmModal, setConfirmModal] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    onConfirm: null,
+    onCancel: null, // Guardamos qué hacer si se cancela (para restaurar otros modales)
+  })
+
   const [editingUser, setEditingUser] = useState(null)
   const [form, setForm] = useState(initialForm)
 
@@ -63,7 +72,6 @@ const Usuarios = () => {
     try {
       setLoading(true)
       setError('')
-
       const data = await userService.listar()
       setUsuarios(data || [])
     } catch (err) {
@@ -99,7 +107,6 @@ const Usuarios = () => {
 
   const abrirModalEditar = (usuario) => {
     setEditingUser(usuario)
-
     setForm({
       firstName: usuario.firstName || '',
       lastName: usuario.lastName || '',
@@ -109,7 +116,6 @@ const Usuarios = () => {
       phone: usuario.phone || '',
       isActive: usuario.isActive ?? true,
     })
-
     setError('')
     setSuccess('')
     setVisible(true)
@@ -123,18 +129,11 @@ const Usuarios = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target
-
-    setForm((prev) => ({
-      ...prev,
-      [name]: value,
-    }))
+    setForm((prev) => ({ ...prev, [name]: value }))
   }
 
   const handleChangeEstado = (e) => {
-    setForm((prev) => ({
-      ...prev,
-      isActive: e.target.value === 'true',
-    }))
+    setForm((prev) => ({ ...prev, isActive: e.target.value === 'true' }))
   }
 
   const validarFormulario = () => {
@@ -142,18 +141,13 @@ const Usuarios = () => {
     if (!String(form.lastName || '').trim()) return 'Los apellidos son requeridos.'
     if (!String(form.email || '').trim()) return 'El email es requerido.'
     if (!String(form.username || '').trim()) return 'El username es requerido.'
-
-    if (!editingUser && !String(form.password || '').trim()) {
-      return 'La contraseña es requerida.'
-    }
-
+    if (!editingUser && !String(form.password || '').trim()) return 'La contraseña es requerida.'
     return ''
   }
 
   const guardarUsuario = async () => {
     try {
       const mensajeValidacion = validarFormulario()
-
       if (mensajeValidacion) {
         setError(mensajeValidacion)
         return
@@ -173,10 +167,7 @@ const Usuarios = () => {
       }
 
       const password = String(form.password || '').trim()
-
-      if (password) {
-        payload.password = password
-      }
+      if (password) payload.password = password
 
       if (editingUser) {
         await userService.actualizar(editingUser.id, payload)
@@ -196,25 +187,47 @@ const Usuarios = () => {
     }
   }
 
-  const eliminarUsuario = async (usuario) => {
-    const confirmar = window.confirm(
-      `¿Seguro que deseas desactivar al usuario ${usuario.firstName} ${usuario.lastName}?`,
-    )
+  // Modificado: Ahora soporta tanto activar como desactivar dinámicamente
+  const confirmarAlternarEstadoUsuario = (usuario) => {
+    const accion = usuario.isActive ? 'desactivar' : 'activar'
+    setConfirmModal({
+      visible: true,
+      title: `${accion.charAt(0).toUpperCase() + accion.slice(1)} Usuario`,
+      message: `¿Seguro que deseas ${accion} al usuario ${usuario.firstName} ${usuario.lastName}?`,
+      onConfirm: () => ejecutarAlternarEstado(usuario),
+      onCancel: null, // No requiere restaurar ningún modal previo
+    })
+  }
 
-    if (!confirmar) return
-
+  const ejecutarAlternarEstado = async (usuario) => {
+    cerrarConfirmModal()
     try {
       setLoading(true)
       setError('')
       setSuccess('')
-
-      await userService.eliminar(usuario.id)
-
-      setSuccess('Usuario desactivado correctamente.')
+      
+      if (usuario.isActive) {
+        // Si está activo, lo desactivamos (flujo tradicional)
+        await userService.eliminar(usuario.id)
+        setSuccess('Usuario desactivado correctamente.')
+      } else {
+        // Si está inactivo, mandamos el payload con isActive: true al endpoint de actualizar
+        const payload = {
+          firstName: usuario.firstName,
+          lastName: usuario.lastName,
+          email: usuario.email,
+          username: usuario.username,
+          phone: usuario.phone,
+          isActive: true
+        }
+        await userService.actualizar(usuario.id, payload)
+        setSuccess('Usuario activado correctamente.')
+      }
+      
       await cargarUsuarios()
     } catch (err) {
       console.error(err)
-      setError('No se pudo desactivar el usuario.')
+      setError('No se pudo cambiar el estado del usuario.')
     } finally {
       setLoading(false)
     }
@@ -254,7 +267,6 @@ const Usuarios = () => {
 
   const asignarRol = async () => {
     if (!selectedUser) return
-
     if (!selectedRoleId) {
       setError('Seleccione un rol para asignar.')
       return
@@ -272,7 +284,6 @@ const Usuarios = () => {
 
       const data = await userRoleService.listarRolesPorUser(selectedUser.id)
       setRolesUsuario(normalizarRolesUsuario(data || []))
-
       await cargarUsuarios()
 
       setSelectedRoleId('')
@@ -285,25 +296,36 @@ const Usuarios = () => {
     }
   }
 
-  const removerRol = async (role) => {
+  // Modificado: Oculta temporalmente el modal de roles para evitar el bug estético
+  const confirmarRemoverRol = (role) => {
     if (!selectedUser) return
-
     const roleId = role.roleId || role.id
 
-    const confirmar = window.confirm(`¿Seguro que deseas quitar el rol ${role.name || role.code}?`)
+    setVisibleRoles(false) // Ocultamos el modal de fondo
 
-    if (!confirmar) return
+    setConfirmModal({
+      visible: true,
+      title: 'Quitar Rol',
+      message: `¿Seguro que deseas quitar el rol ${role.name || role.code}?`,
+      onConfirm: () => ejecutarRemoverRol(selectedUser.id, roleId),
+      onCancel: () => setVisibleRoles(true), // Si cancela, reaparece el modal de roles limpio
+    })
+  }
 
+  const ejecutarRemoverRol = async (userId, roleId) => {
+    // Cerramos confirmación y reabrimos el modal de roles original
+    setConfirmModal((prev) => ({ ...prev, visible: false }))
+    setVisibleRoles(true)
+    
     try {
       setLoadingRoles(true)
       setError('')
       setSuccess('')
 
-      await userRoleService.remover(selectedUser.id, roleId)
+      await userRoleService.remover(userId, roleId)
 
-      const data = await userRoleService.listarRolesPorUser(selectedUser.id)
+      const data = await userRoleService.listarRolesPorUser(userId)
       setRolesUsuario(normalizarRolesUsuario(data || []))
-
       await cargarUsuarios()
 
       setSuccess('Rol removido correctamente.')
@@ -315,28 +337,27 @@ const Usuarios = () => {
     }
   }
 
+  const cerrarConfirmModal = () => {
+    if (confirmModal.onCancel) {
+      confirmModal.onCancel()
+    }
+    setConfirmModal((prev) => ({ ...prev, visible: false }))
+  }
+
   const rolesDisponiblesParaAsignar = roles.filter((role) => {
     const yaAsignado = rolesUsuario.some((r) => {
       const roleIdAsignado = r.roleId || r.id
       return roleIdAsignado === role.id
     })
-
     return role.isActive && !yaAsignado
   })
 
   const normalizarRolesUsuario = (data = []) => {
     return data.map((item) => {
-      // Caso 1: el backend ya devuelve el rol completo
       if (item.code && item.name) {
-        return {
-          ...item,
-          roleId: item.roleId || item.id,
-        }
+        return { ...item, roleId: item.roleId || item.id }
       }
-
-      // Caso 2: el backend devuelve userRole con roleId
       const role = roles.find((r) => r.id === item.roleId)
-
       return {
         ...item,
         id: role?.id || item.roleId,
@@ -354,7 +375,6 @@ const Usuarios = () => {
       <CCard>
         <CCardHeader className="d-flex justify-content-between align-items-center">
           <strong>Administración de Usuarios</strong>
-
           <CButton color="primary" onClick={abrirModalCrear}>
             Nuevo Usuario
           </CButton>
@@ -440,14 +460,14 @@ const Usuarios = () => {
                           Editar
                         </CButton>
 
+                        {/* Modificado: Botón reactivo según el estado del usuario */}
                         <CButton
-                          color="danger"
+                          color={usuario.isActive ? 'danger' : 'success'}
                           variant="outline"
                           size="sm"
-                          disabled={!usuario.isActive}
-                          onClick={() => eliminarUsuario(usuario)}
+                          onClick={() => confirmarAlternarEstadoUsuario(usuario)}
                         >
-                          Desactivar
+                          {usuario.isActive ? 'Desactivar' : 'Activar'}
                         </CButton>
                       </CTableDataCell>
                     </CTableRow>
@@ -459,75 +479,38 @@ const Usuarios = () => {
         </CCardBody>
       </CCard>
 
+      {/* MODAL FORMULARIO DE USUARIO */}
       <CModal visible={visible} onClose={cerrarModal} backdrop="static">
+        {/* ... (Se mantiene exactamente igual tu formulario) ... */}
         <CModalHeader>
           <CModalTitle>{editingUser ? 'Editar Usuario' : 'Nuevo Usuario'}</CModalTitle>
         </CModalHeader>
-
         <CModalBody>
           <CRow className="g-3">
             <CCol md={6}>
               <CFormLabel>Nombres</CFormLabel>
-              <CFormInput
-                name="firstName"
-                value={form.firstName || ''}
-                onChange={handleChange}
-                placeholder="Ej: Juan Carlos"
-              />
+              <CFormInput name="firstName" value={form.firstName || ''} onChange={handleChange} placeholder="Ej: Juan Carlos" />
             </CCol>
-
             <CCol md={6}>
               <CFormLabel>Apellidos</CFormLabel>
-              <CFormInput
-                name="lastName"
-                value={form.lastName || ''}
-                onChange={handleChange}
-                placeholder="Ej: Pérez López"
-              />
+              <CFormInput name="lastName" value={form.lastName || ''} onChange={handleChange} placeholder="Ej: Pérez López" />
             </CCol>
-
             <CCol md={6}>
               <CFormLabel>Email</CFormLabel>
-              <CFormInput
-                type="email"
-                name="email"
-                value={form.email || ''}
-                onChange={handleChange}
-                placeholder="Ej: usuario@correo.com"
-              />
+              <CFormInput type="email" name="email" value={form.email || ''} onChange={handleChange} placeholder="Ej: usuario@correo.com" />
             </CCol>
-
             <CCol md={6}>
               <CFormLabel>Username</CFormLabel>
-              <CFormInput
-                name="username"
-                value={form.username || ''}
-                onChange={handleChange}
-                placeholder="Ej: jperez"
-              />
+              <CFormInput name="username" value={form.username || ''} onChange={handleChange} placeholder="Ej: jperez" />
             </CCol>
-
             <CCol md={6}>
               <CFormLabel>{editingUser ? 'Nueva contraseña' : 'Contraseña'}</CFormLabel>
-              <CFormInput
-                type="password"
-                name="password"
-                value={form.password || ''}
-                onChange={handleChange}
-                placeholder={editingUser ? 'Dejar vacío si no cambia' : 'Ingrese la contraseña'}
-              />
+              <CFormInput type="password" name="password" value={form.password || ''} onChange={handleChange} placeholder={editingUser ? 'Dejar vacío si no cambia' : 'Ingrese la contraseña'} />
             </CCol>
-
             <CCol md={6}>
               <CFormLabel>Teléfono</CFormLabel>
-              <CFormInput
-                name="phone"
-                value={form.phone || ''}
-                onChange={handleChange}
-                placeholder="Ej: 0999999999"
-              />
+              <CFormInput name="phone" value={form.phone || ''} onChange={handleChange} placeholder="Ej: 0999999999" />
             </CCol>
-
             <CCol md={6}>
               <CFormLabel>Estado</CFormLabel>
               <CFormSelect value={String(form.isActive)} onChange={handleChangeEstado}>
@@ -537,25 +520,15 @@ const Usuarios = () => {
             </CCol>
           </CRow>
         </CModalBody>
-
         <CModalFooter>
-          <CButton color="secondary" variant="outline" onClick={cerrarModal}>
-            Cancelar
-          </CButton>
-
+          <CButton color="secondary" variant="outline" onClick={cerrarModal}>Cancelar</CButton>
           <CButton color="primary" onClick={guardarUsuario} disabled={saving}>
-            {saving ? (
-              <>
-                <CSpinner size="sm" className="me-2" />
-                Guardando...
-              </>
-            ) : (
-              'Guardar'
-            )}
+            {saving ? <><CSpinner size="sm" className="me-2" />Guardando...</> : 'Guardar'}
           </CButton>
         </CModalFooter>
       </CModal>
 
+      {/* MODAL GESTIÓN DE ROLES */}
       <CModal visible={visibleRoles} onClose={cerrarModalRoles} backdrop="static">
         <CModalHeader>
           <CModalTitle>
@@ -572,7 +545,6 @@ const Usuarios = () => {
                 onChange={(e) => setSelectedRoleId(e.target.value)}
               >
                 <option value="">Seleccione un rol</option>
-
                 {rolesDisponiblesParaAsignar.map((role) => (
                   <option key={role.id} value={role.id}>
                     {role.name} - {role.code}
@@ -631,7 +603,7 @@ const Usuarios = () => {
                           color="danger"
                           variant="outline"
                           size="sm"
-                          onClick={() => removerRol(role)}
+                          onClick={() => confirmarRemoverRol(role)}
                         >
                           Quitar
                         </CButton>
@@ -647,6 +619,24 @@ const Usuarios = () => {
         <CModalFooter>
           <CButton color="secondary" variant="outline" onClick={cerrarModalRoles}>
             Cerrar
+          </CButton>
+        </CModalFooter>
+      </CModal>
+
+      {/* MODAL DE CONFIRMACIÓN - RECTIFICADO (Transición fluida sin superposición) */}
+      <CModal visible={confirmModal.visible} onClose={cerrarConfirmModal} backdrop="static">
+        <CModalHeader>
+          <CModalTitle>{confirmModal.title}</CModalTitle>
+        </CModalHeader>
+        <CModalBody>
+          <p>{confirmModal.message}</p>
+        </CModalBody>
+        <CModalFooter>
+          <CButton color="secondary" variant="outline" onClick={cerrarConfirmModal}>
+            Cancelar
+          </CButton>
+          <CButton color={confirmModal.title.includes('Activar') ? 'success' : 'danger'} onClick={confirmModal.onConfirm}>
+            Confirmar
           </CButton>
         </CModalFooter>
       </CModal>

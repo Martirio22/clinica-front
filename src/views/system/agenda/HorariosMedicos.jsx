@@ -70,6 +70,22 @@ const HorariosMedicos = () => {
   const [modalError, setModalError] = useState('')
   const [success, setSuccess] = useState('')
 
+  // Estado unificado del modal de confirmación dinámico
+  const [confirmModal, setConfirmModal] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    onConfirm: null,
+  })
+
+  // Temporizador para limpiar la alerta de éxito automáticamente
+  useEffect(() => {
+    if (success) {
+      const timer = setTimeout(() => setSuccess(''), 3500)
+      return () => clearTimeout(timer)
+    }
+  }, [success])
+
   const cargarMedicos = async () => {
     try {
       const data = await doctorService.listar()
@@ -303,28 +319,52 @@ const HorariosMedicos = () => {
     }
   }
 
-  const eliminarHorario = async (horario) => {
-    const confirmar = window.confirm(
-      `¿Seguro que deseas inactivar el horario de ${obtenerNombreMedico(horario.doctorId)}?`,
-    )
+  // Prepara y abre el modal dinámico dependiendo del estado actual del horario
+  const confirmarAlternarEstadoHorario = (horario) => {
+    const accion = horario.isActive ? 'inactivar' : 'activar'
+    setConfirmModal({
+      visible: true,
+      title: `${accion.charAt(0).toUpperCase() + accion.slice(1)} Horario Médico`,
+      message: `¿Seguro que deseas ${accion} el horario de ${obtenerNombreMedico(horario.doctorId)} los días ${obtenerDiaSemana(horario.dayOfWeek)}?`,
+      onConfirm: () => ejecutarAlternarEstado(horario),
+    })
+  }
 
-    if (!confirmar) return
-
+  const ejecutarAlternarEstado = async (horario) => {
+    setConfirmModal((prev) => ({ ...prev, visible: false }))
     try {
       setLoading(true)
       setError('')
       setSuccess('')
 
-      await doctorScheduleService.eliminar(horario.id)
+      if (horario.isActive) {
+        await doctorScheduleService.eliminar(horario.id)
+        setSuccess('Horario médico inactivado correctamente.')
+      } else {
+        const payload = {
+          doctorId: horario.doctorId,
+          branchId: horario.branchId,
+          officeId: horario.officeId,
+          dayOfWeek: Number(horario.dayOfWeek),
+          startTime: normalizarHora(horario.startTime),
+          endTime: normalizarHora(horario.endTime),
+          isActive: true,
+        }
+        await doctorScheduleService.actualizar(horario.id, payload)
+        setSuccess('Horario médico activado correctamente.')
+      }
 
-      setSuccess('Horario médico inactivado correctamente.')
       await cargarHorarios()
     } catch (err) {
       console.error(err)
-      setError('No se pudo inactivar el horario médico.')
+      setError('No se pudo cambiar el estado del horario médico.')
     } finally {
       setLoading(false)
     }
+  }
+
+  const cerrarConfirmModal = () => {
+    setConfirmModal((prev) => ({ ...prev, visible: false }))
   }
 
   return (
@@ -424,7 +464,7 @@ const HorariosMedicos = () => {
               <CTableBody>
                 {horariosFiltrados.length === 0 ? (
                   <CTableRow>
-                    <CTableDataCell colSpan={8} className="text-center">
+                    <CTableDataCell colSpan={9} className="text-center">
                       No existen horarios médicos registrados.
                     </CTableDataCell>
                   </CTableRow>
@@ -459,13 +499,12 @@ const HorariosMedicos = () => {
                         </CButton>
 
                         <CButton
-                          color="danger"
+                          color={horario.isActive ? 'danger' : 'success'}
                           variant="outline"
                           size="sm"
-                          disabled={!horario.isActive}
-                          onClick={() => eliminarHorario(horario)}
+                          onClick={() => confirmarAlternarEstadoHorario(horario)}
                         >
-                          Inactivar
+                          {horario.isActive ? 'Inactivar' : 'Activar'}
                         </CButton>
                       </CTableDataCell>
                     </CTableRow>
@@ -477,6 +516,7 @@ const HorariosMedicos = () => {
         </CCardBody>
       </CCard>
 
+      {/* MODAL FORMULARIO DE HORARIO */}
       <CModal visible={visible} onClose={cerrarModal} backdrop="static" size="lg">
         <CModalHeader>
           <CModalTitle>{editingSchedule ? 'Editar horario médico' : 'Nuevo horario médico'}</CModalTitle>
@@ -590,6 +630,27 @@ const HorariosMedicos = () => {
             ) : (
               'Guardar'
             )}
+          </CButton>
+        </CModalFooter>
+      </CModal>
+
+      {/* MODAL DE CONFIRMACIÓN DINÁMICO */}
+      <CModal visible={confirmModal.visible} onClose={cerrarConfirmModal} backdrop="static">
+        <CModalHeader>
+          <CModalTitle>{confirmModal.title}</CModalTitle>
+        </CModalHeader>
+        <CModalBody>
+          <p>{confirmModal.message}</p>
+        </CModalBody>
+        <CModalFooter>
+          <CButton color="secondary" variant="outline" onClick={cerrarConfirmModal}>
+            Cancelar
+          </CButton>
+          <CButton 
+            color={confirmModal.title?.includes('Activar') ? 'success' : 'danger'} 
+            onClick={confirmModal.onConfirm}
+          >
+            Confirmar
           </CButton>
         </CModalFooter>
       </CModal>

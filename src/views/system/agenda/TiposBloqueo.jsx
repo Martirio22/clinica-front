@@ -49,6 +49,22 @@ const TiposBloqueo = () => {
   const [modalError, setModalError] = useState('')
   const [success, setSuccess] = useState('')
 
+  // Estado estructurado para el modal de confirmación dinámico
+  const [confirmModal, setConfirmModal] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    onConfirm: null,
+  })
+
+  // Temporizador para desvanecer la alerta de éxito automáticamente (3500ms)
+  useEffect(() => {
+    if (success) {
+      const timer = setTimeout(() => setSuccess(''), 3500)
+      return () => clearTimeout(timer)
+    }
+  }, [success])
+
   const cargarTiposBloqueo = async () => {
     try {
       setLoading(true)
@@ -175,55 +191,58 @@ const TiposBloqueo = () => {
     }
   }
 
-  const eliminarTipoBloqueo = async (type) => {
-    const confirmar = window.confirm(`¿Seguro que deseas inactivar el tipo de bloqueo ${type.name}?`)
+  // Prepara y despliega el modal dinámico de confirmación de estado
+  const confirmarAlternarEstadoTipoBloqueo = (type) => {
+    const accion = type.isActive ? 'inactivar' : 'activar'
+    setConfirmModal({
+      visible: true,
+      title: `${accion.charAt(0).toUpperCase() + accion.slice(1)} Tipo de Bloqueo`,
+      message: `¿Seguro que deseas ${accion} el tipo de bloqueo "${type.name}"?`,
+      onConfirm: () => ejecutarAlternarEstado(type),
+    })
+  }
 
-    if (!confirmar) return
-
+  const ejecutarAlternarEstado = async (type) => {
+    setConfirmModal((prev) => ({ ...prev, visible: false }))
     try {
       setLoading(true)
       setError('')
       setSuccess('')
 
-      await scheduleBlockTypeService.eliminar(type.id)
+      if (type.isActive) {
+        await scheduleBlockTypeService.eliminar(type.id)
+        setSuccess('Tipo de bloqueo inactivado correctamente.')
+      } else {
+        const payload = {
+          code: type.code,
+          name: type.name,
+          description: type.description || null,
+          isActive: true,
+        }
+        await scheduleBlockTypeService.actualizar(type.id, payload)
+        setSuccess('Tipo de bloqueo activado correctamente.')
+      }
 
-      setSuccess('Tipo de bloqueo inactivado correctamente.')
       await cargarTiposBloqueo()
     } catch (err) {
       console.error(err)
-      setError('No se pudo inactivar el tipo de bloqueo.')
+      setError('No se pudo cambiar el estado del tipo de bloqueo.')
     } finally {
       setLoading(false)
     }
   }
 
+  const cerrarConfirmModal = () => {
+    setConfirmModal((prev) => ({ ...prev, visible: false }))
+  }
+
   const crearTiposBloqueoBase = async () => {
     const blocks = [
-      {
-        code: 'VACACION',
-        name: 'Vacaciones',
-        description: 'Bloqueo por vacaciones',
-      },
-      {
-        code: 'ALMUERZO',
-        name: 'Almuerzo',
-        description: 'Horario de almuerzo',
-      },
-      {
-        code: 'REUNION',
-        name: 'Reunión',
-        description: 'Reuniones internas',
-      },
-      {
-        code: 'PERSONAL',
-        name: 'Asunto personal',
-        description: 'Motivos personales',
-      },
-      {
-        code: 'MANTENIMIENTO',
-        name: 'Mantenimiento',
-        description: 'Bloqueo por mantenimiento',
-      },
+      { code: 'VACACION', name: 'Vacaciones', description: 'Bloqueo por vacaciones' },
+      { code: 'ALMUERZO', name: 'Almuerzo', description: 'Horario de almuerzo' },
+      { code: 'REUNION', name: 'Reunión', description: 'Reuniones internas' },
+      { code: 'PERSONAL', name: 'Asunto personal', description: 'Motivos personales' },
+      { code: 'MANTENIMIENTO', name: 'Mantenimiento', description: 'Bloqueo por mantenimiento' },
     ]
 
     try {
@@ -345,13 +364,12 @@ const TiposBloqueo = () => {
                         </CButton>
 
                         <CButton
-                          color="danger"
+                          color={type.isActive ? 'danger' : 'success'}
                           variant="outline"
                           size="sm"
-                          disabled={!type.isActive}
-                          onClick={() => eliminarTipoBloqueo(type)}
+                          onClick={() => confirmarAlternarEstadoTipoBloqueo(type)}
                         >
-                          Inactivar
+                          {type.isActive ? 'Inactivar' : 'Activar'}
                         </CButton>
                       </CTableDataCell>
                     </CTableRow>
@@ -363,6 +381,7 @@ const TiposBloqueo = () => {
         </CCardBody>
       </CCard>
 
+      {/* MODAL FORMULARIO (Crear / Editar) */}
       <CModal visible={visible} onClose={cerrarModal} backdrop="static">
         <CModalHeader>
           <CModalTitle>{editingType ? 'Editar tipo de bloqueo' : 'Nuevo tipo de bloqueo'}</CModalTitle>
@@ -430,6 +449,27 @@ const TiposBloqueo = () => {
             ) : (
               'Guardar'
             )}
+          </CButton>
+        </CModalFooter>
+      </CModal>
+
+      {/* MODAL DE CONFIRMACIÓN DINÁMICO */}
+      <CModal visible={confirmModal.visible} onClose={cerrarConfirmModal} backdrop="static">
+        <CModalHeader>
+          <CModalTitle>{confirmModal.title}</CModalTitle>
+        </CModalHeader>
+        <CModalBody>
+          <p>{confirmModal.message}</p>
+        </CModalBody>
+        <CModalFooter>
+          <CButton color="secondary" variant="outline" onClick={cerrarConfirmModal}>
+            Cancelar
+          </CButton>
+          <CButton 
+            color={confirmModal.title?.includes('Activar') ? 'success' : 'danger'} 
+            onClick={confirmModal.onConfirm}
+          >
+            Confirmar
           </CButton>
         </CModalFooter>
       </CModal>

@@ -54,6 +54,22 @@ const AsistentesClinicos = () => {
   const [modalError, setModalError] = useState('')
   const [success, setSuccess] = useState('')
 
+  // Estado del modal de confirmación dinámico unificado (Igual a Especialidades)
+  const [confirmModal, setConfirmModal] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    onConfirm: null,
+  })
+
+  // Temporizador para limpiar alertas de éxito automáticamente
+  useEffect(() => {
+    if (success) {
+      const timer = setTimeout(() => setSuccess(''), 3500)
+      return () => clearTimeout(timer)
+    }
+  }, [success])
+
   const cargarUsuariosAsistentes = async () => {
     try {
       const data = await userService.listarAsistentesDisponibles()
@@ -68,7 +84,6 @@ const AsistentesClinicos = () => {
     try {
       setLoading(true)
       setError('')
-
       const data = await clinicalAssistantService.listar()
       setAsistentes(data || [])
     } catch (err) {
@@ -90,20 +105,16 @@ const AsistentesClinicos = () => {
 
   const obtenerNombreUsuario = (userId) => {
     const usuario = obtenerUsuarioAsistente(userId)
-
     if (!usuario) return '-'
-
     return `${usuario.firstName || ''} ${usuario.lastName || ''}`.trim()
   }
 
   const asistentesFiltrados = useMemo(() => {
     const texto = String(search || '').toLowerCase().trim()
-
     if (!texto) return asistentes
 
     return asistentes.filter((assistant) => {
       const usuario = obtenerUsuarioAsistente(assistant.userId)
-
       const nombre = `${usuario?.firstName || ''} ${usuario?.lastName || ''}`.toLowerCase()
       const email = String(usuario?.email || '').toLowerCase()
       const username = String(usuario?.username || '').toLowerCase()
@@ -128,7 +139,6 @@ const AsistentesClinicos = () => {
 
   const abrirModalEditar = (assistant) => {
     setEditingAssistant(assistant)
-
     setForm({
       userId: assistant.userId || '',
       canManageChat: assistant.canManageChat ?? true,
@@ -136,7 +146,6 @@ const AsistentesClinicos = () => {
       canAuthorizeCare: assistant.canAuthorizeCare ?? true,
       isActive: assistant.isActive ?? true,
     })
-
     setError('')
     setModalError('')
     setSuccess('')
@@ -152,41 +161,28 @@ const AsistentesClinicos = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target
-
-    setForm((prev) => ({
-      ...prev,
-      [name]: value,
-    }))
+    setForm((prev) => ({ ...prev, [name]: value }))
   }
 
   const handleCheckChange = (e) => {
     const { name, checked } = e.target
-
-    setForm((prev) => ({
-      ...prev,
-      [name]: checked,
-    }))
+    setForm((prev) => ({ ...prev, [name]: checked }))
   }
 
   const handleChangeEstado = (e) => {
-    setForm((prev) => ({
-      ...prev,
-      isActive: e.target.value === 'true',
-    }))
+    setForm((prev) => ({ ...prev, isActive: e.target.value === 'true' }))
   }
 
   const validarFormulario = () => {
     if (!String(form.userId || '').trim()) {
       return 'Debe seleccionar un usuario con rol ASISTENTE.'
     }
-
     return ''
   }
 
   const guardarAsistente = async () => {
     try {
       const mensajeValidacion = validarFormulario()
-
       if (mensajeValidacion) {
         setModalError(mensajeValidacion)
         return
@@ -196,21 +192,17 @@ const AsistentesClinicos = () => {
       setModalError('')
       setSuccess('')
 
-      let payload = {}
-
-      if (editingAssistant) {
-        payload = {
-          userId: String(form.userId || '').trim(),
-          canManageChat: form.canManageChat === true,
-          canScheduleAppointments: form.canScheduleAppointments === true,
-          canAuthorizeCare: form.canAuthorizeCare === true,
-          isActive: form.isActive,
-        }
-      } else {
-        payload = {
-          userId: String(form.userId || '').trim(),
-        }
-      }
+      let payload = editingAssistant
+        ? {
+            userId: String(form.userId || '').trim(),
+            canManageChat: form.canManageChat === true,
+            canScheduleAppointments: form.canScheduleAppointments === true,
+            canAuthorizeCare: form.canAuthorizeCare === true,
+            isActive: form.isActive,
+          }
+        : {
+            userId: String(form.userId || '').trim(),
+          }
 
       if (editingAssistant) {
         await clinicalAssistantService.actualizar(editingAssistant.id, payload)
@@ -231,29 +223,53 @@ const AsistentesClinicos = () => {
     }
   }
 
-  const eliminarAsistente = async (assistant) => {
+  // --- Lógica de Cambio de Estado Unificado ---
+  const confirmarAlternarEstadoAsistente = (assistant) => {
+    const accion = assistant.isActive ? 'inactivar' : 'activar'
     const nombre = obtenerNombreUsuario(assistant.userId)
+    
+    setConfirmModal({
+      visible: true,
+      title: `${accion.charAt(0).toUpperCase() + accion.slice(1)} Asistente Clínico`,
+      message: `¿Seguro que deseas ${accion} al asistente clínico ${nombre}?`,
+      onConfirm: () => ejecutarAlternarEstado(assistant),
+    })
+  }
 
-    const confirmar = window.confirm(`¿Seguro que deseas inactivar al asistente clínico ${nombre}?`)
-
-    if (!confirmar) return
-
+  const ejecutarAlternarEstado = async (assistant) => {
+    setConfirmModal((prev) => ({ ...prev, visible: false }))
     try {
       setLoading(true)
       setError('')
       setSuccess('')
 
-      await clinicalAssistantService.eliminar(assistant.id)
+      if (assistant.isActive) {
+        await clinicalAssistantService.eliminar(assistant.id)
+        setSuccess('Asistente clínico inactivado correctamente.')
+      } else {
+        const payload = {
+          userId: assistant.userId,
+          canManageChat: assistant.canManageChat,
+          canScheduleAppointments: assistant.canScheduleAppointments,
+          canAuthorizeCare: assistant.canAuthorizeCare,
+          isActive: true,
+        }
+        await clinicalAssistantService.actualizar(assistant.id, payload)
+        setSuccess('Asistente clínico activado correctamente.')
+      }
 
-      setSuccess('Asistente clínico inactivado correctamente.')
       await cargarAsistentes()
       await cargarUsuariosAsistentes()
     } catch (err) {
       console.error(err)
-      setError('No se pudo inactivar el asistente clínico.')
+      setError('No se pudo cambiar el estado del asistente clínico.')
     } finally {
       setLoading(false)
     }
+  }
+
+  const cerrarConfirmModal = () => {
+    setConfirmModal((prev) => ({ ...prev, visible: false }))
   }
 
   const renderPermiso = (value) => {
@@ -265,7 +281,6 @@ const AsistentesClinicos = () => {
       <CCard>
         <CCardHeader className="d-flex justify-content-between align-items-center">
           <strong>Administración de Asistentes Clínicos</strong>
-
           <CButton color="primary" onClick={abrirModalCrear}>
             Nuevo asistente clínico
           </CButton>
@@ -335,11 +350,7 @@ const AsistentesClinicos = () => {
                       </CTableDataCell>
 
                       <CTableDataCell>{renderPermiso(assistant.canManageChat)}</CTableDataCell>
-
-                      <CTableDataCell>
-                        {renderPermiso(assistant.canScheduleAppointments)}
-                      </CTableDataCell>
-
+                      <CTableDataCell>{renderPermiso(assistant.canScheduleAppointments)}</CTableDataCell>
                       <CTableDataCell>{renderPermiso(assistant.canAuthorizeCare)}</CTableDataCell>
 
                       <CTableDataCell>
@@ -362,13 +373,12 @@ const AsistentesClinicos = () => {
                         </CButton>
 
                         <CButton
-                          color="danger"
+                          color={assistant.isActive ? 'danger' : 'success'}
                           variant="outline"
                           size="sm"
-                          disabled={!assistant.isActive}
-                          onClick={() => eliminarAsistente(assistant)}
+                          onClick={() => confirmarAlternarEstadoAsistente(assistant)}
                         >
-                          Inactivar
+                          {assistant.isActive ? 'Inactivar' : 'Activar'}
                         </CButton>
                       </CTableDataCell>
                     </CTableRow>
@@ -380,6 +390,7 @@ const AsistentesClinicos = () => {
         </CCardBody>
       </CCard>
 
+      {/* MODAL FORMULARIO */}
       <CModal visible={visible} onClose={cerrarModal} backdrop="static" size="lg">
         <CModalHeader>
           <CModalTitle>
@@ -404,7 +415,6 @@ const AsistentesClinicos = () => {
                 disabled={!!editingAssistant}
               >
                 <option value="">Seleccione un usuario con rol ASISTENTE</option>
-
                 {(editingAssistant ? usuariosAsistentes : usuariosDisponiblesParaCrear).map(
                   (user) => (
                     <option key={user.id} value={user.id}>
@@ -426,7 +436,6 @@ const AsistentesClinicos = () => {
                     onChange={handleCheckChange}
                   />
                 </CCol>
-
                 <CCol md={4}>
                   <CFormCheck
                     id="canScheduleAppointments"
@@ -436,7 +445,6 @@ const AsistentesClinicos = () => {
                     onChange={handleCheckChange}
                   />
                 </CCol>
-
                 <CCol md={4}>
                   <CFormCheck
                     id="canAuthorizeCare"
@@ -463,7 +471,6 @@ const AsistentesClinicos = () => {
           <CButton color="secondary" variant="outline" onClick={cerrarModal}>
             Cancelar
           </CButton>
-
           <CButton color="primary" onClick={guardarAsistente} disabled={saving}>
             {saving ? (
               <>
@@ -473,6 +480,27 @@ const AsistentesClinicos = () => {
             ) : (
               'Guardar'
             )}
+          </CButton>
+        </CModalFooter>
+      </CModal>
+
+      {/* MODAL DE CONFIRMACIÓN (Exactamente igual al de Especialidades) */}
+      <CModal visible={confirmModal.visible} onClose={cerrarConfirmModal} backdrop="static">
+        <CModalHeader>
+          <CModalTitle>{confirmModal.title}</CModalTitle>
+        </CModalHeader>
+        <CModalBody>
+          <p>{confirmModal.message}</p>
+        </CModalBody>
+        <CModalFooter>
+          <CButton color="secondary" variant="outline" onClick={cerrarConfirmModal}>
+            Cancelar
+          </CButton>
+          <CButton 
+            color={confirmModal.title?.includes('Activar') ? 'success' : 'danger'} 
+            onClick={confirmModal.onConfirm}
+          >
+            Confirmar
           </CButton>
         </CModalFooter>
       </CModal>

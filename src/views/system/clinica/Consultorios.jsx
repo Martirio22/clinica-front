@@ -53,6 +53,14 @@ const Consultorios = () => {
   const [modalError, setModalError] = useState('')
   const [success, setSuccess] = useState('')
 
+  // Estado del modal de confirmación unificado (Alineación estándar de la app)
+  const [confirmModal, setConfirmModal] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    onConfirm: null,
+  })
+
   const cargarSucursales = async () => {
     try {
       const data = await branchService.listar()
@@ -67,7 +75,6 @@ const Consultorios = () => {
     try {
       setLoading(true)
       setError('')
-
       const data = await officeService.listar()
       setConsultorios(data || [])
     } catch (err) {
@@ -123,7 +130,6 @@ const Consultorios = () => {
 
   const abrirModalEditar = (office) => {
     setEditingOffice(office)
-
     setForm({
       branchId: office.branchId || '',
       code: office.code || '',
@@ -131,7 +137,6 @@ const Consultorios = () => {
       floor: office.floor || '',
       isActive: office.isActive ?? true,
     })
-
     setError('')
     setModalError('')
     setSuccess('')
@@ -147,7 +152,6 @@ const Consultorios = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target
-
     setForm((prev) => ({
       ...prev,
       [name]: value,
@@ -165,14 +169,12 @@ const Consultorios = () => {
     if (!String(form.branchId || '').trim()) return 'La sucursal es requerida.'
     if (!String(form.code || '').trim()) return 'El código del consultorio es requerido.'
     if (!String(form.name || '').trim()) return 'El nombre del consultorio es requerido.'
-
     return ''
   }
 
   const guardarConsultorio = async () => {
     try {
       const mensajeValidacion = validarFormulario()
-
       if (mensajeValidacion) {
         setModalError(mensajeValidacion)
         return
@@ -199,12 +201,7 @@ const Consultorios = () => {
       }
 
       cerrarModal()
-
-      if (filtroBranchId) {
-        await cargarConsultoriosPorSucursal(filtroBranchId)
-      } else {
-        await cargarConsultorios()
-      }
+      refrescarTabla()
     } catch (err) {
       console.error(err)
       setModalError(err?.message || 'Ocurrió un error al guardar el consultorio.')
@@ -213,31 +210,60 @@ const Consultorios = () => {
     }
   }
 
-  const eliminarConsultorio = async (office) => {
-    const confirmar = window.confirm(`¿Seguro que deseas inactivar el consultorio ${office.name}?`)
+  // Modificado: Configura el modal dinámico para Activar o Inactivar
+  const confirmarAlternarEstadoConsultorio = (office) => {
+    const accion = office.isActive ? 'inactivar' : 'activar'
+    setConfirmModal({
+      visible: true,
+      title: `${accion.charAt(0).toUpperCase() + accion.slice(1)} Consultorio`,
+      message: `¿Seguro que deseas ${accion} el consultorio ${office.name}?`,
+      onConfirm: () => ejecutarAlternarEstado(office),
+    })
+  }
 
-    if (!confirmar) return
-
+  const ejecutarAlternarEstado = async (office) => {
+    setConfirmModal((prev) => ({ ...prev, visible: false }))
     try {
       setLoading(true)
       setError('')
       setSuccess('')
 
-      await officeService.eliminar(office.id)
-
-      setSuccess('Consultorio inactivado correctamente.')
-
-      if (filtroBranchId) {
-        await cargarConsultoriosPorSucursal(filtroBranchId)
+      if (office.isActive) {
+        // Inactivación lógica tradicional (delete)
+        await officeService.eliminar(office.id)
+        setSuccess('Consultorio inactivado correctamente.')
       } else {
-        await cargarConsultorios()
+        // Activación lógica mediante actualización
+        const payload = {
+          branchId: office.branchId,
+          code: office.code,
+          name: office.name,
+          floor: office.floor,
+          isActive: true,
+        }
+        await officeService.actualizar(office.id, payload)
+        setSuccess('Consultorio activado correctamente.')
       }
+
+      refrescarTabla()
     } catch (err) {
       console.error(err)
-      setError('No se pudo inactivar el consultorio.')
+      setError('No se pudo cambiar el estado del consultorio.')
     } finally {
       setLoading(false)
     }
+  }
+
+  const refrescarTabla = async () => {
+    if (filtroBranchId) {
+      await cargarConsultoriosPorSucursal(filtroBranchId)
+    } else {
+      await cargarConsultorios()
+    }
+  }
+
+  const cerrarConfirmModal = () => {
+    setConfirmModal((prev) => ({ ...prev, visible: false }))
   }
 
   const obtenerNombreSucursal = (branchId) => {
@@ -250,7 +276,6 @@ const Consultorios = () => {
       <CCard>
         <CCardHeader className="d-flex justify-content-between align-items-center">
           <strong>Administración de Consultorios</strong>
-
           <CButton color="primary" onClick={abrirModalCrear}>
             Nuevo Consultorio
           </CButton>
@@ -274,7 +299,6 @@ const Consultorios = () => {
               <CFormLabel>Filtrar por sucursal</CFormLabel>
               <CFormSelect value={filtroBranchId} onChange={handleFiltroSucursal}>
                 <option value="">Todas las sucursales</option>
-
                 {sucursales.map((branch) => (
                   <option key={branch.id} value={branch.id}>
                     {branch.name} - {branch.city}
@@ -337,14 +361,14 @@ const Consultorios = () => {
                           Editar
                         </CButton>
 
+                        {/* Modificado: Botón reactivo inteligente */}
                         <CButton
-                          color="danger"
+                          color={office.isActive ? 'danger' : 'success'}
                           variant="outline"
                           size="sm"
-                          disabled={!office.isActive}
-                          onClick={() => eliminarConsultorio(office)}
+                          onClick={() => confirmarAlternarEstadoConsultorio(office)}
                         >
-                          Inactivar
+                          {office.isActive ? 'Inactivar' : 'Activar'}
                         </CButton>
                       </CTableDataCell>
                     </CTableRow>
@@ -356,6 +380,7 @@ const Consultorios = () => {
         </CCardBody>
       </CCard>
 
+      {/* MODAL FORMULARIO DE CREACIÓN/EDICIÓN */}
       <CModal visible={visible} onClose={cerrarModal} backdrop="static">
         <CModalHeader>
           <CModalTitle>{editingOffice ? 'Editar Consultorio' : 'Nuevo Consultorio'}</CModalTitle>
@@ -377,7 +402,6 @@ const Consultorios = () => {
                 onChange={handleChange}
               >
                 <option value="">Seleccione una sucursal</option>
-
                 {sucursales
                   .filter((branch) => branch.isActive)
                   .map((branch) => (
@@ -432,7 +456,6 @@ const Consultorios = () => {
           <CButton color="secondary" variant="outline" onClick={cerrarModal}>
             Cancelar
           </CButton>
-
           <CButton color="primary" onClick={guardarConsultorio} disabled={saving}>
             {saving ? (
               <>
@@ -442,6 +465,24 @@ const Consultorios = () => {
             ) : (
               'Guardar'
             )}
+          </CButton>
+        </CModalFooter>
+      </CModal>
+
+      {/* MODAL DE CONFIRMACIÓN - CORREGIDO (Alineado arriba e idéntico a Roles/Usuarios) */}
+      <CModal visible={confirmModal.visible} onClose={cerrarConfirmModal} backdrop="static">
+        <CModalHeader>
+          <CModalTitle>{confirmModal.title}</CModalTitle>
+        </CModalHeader>
+        <CModalBody>
+          <p>{confirmModal.message}</p>
+        </CModalBody>
+        <CModalFooter>
+          <CButton color="secondary" variant="outline" onClick={cerrarConfirmModal}>
+            Cancelar
+          </CButton>
+          <CButton color={confirmModal.title?.includes('Activar') ? 'success' : 'danger'} onClick={confirmModal.onConfirm}>
+            Confirmar
           </CButton>
         </CModalFooter>
       </CModal>

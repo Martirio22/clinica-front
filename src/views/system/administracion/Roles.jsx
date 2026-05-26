@@ -50,11 +50,19 @@ const Roles = () => {
   const [usuariosAsignados, setUsuariosAsignados] = useState([])
   const [loadingUsuarios, setLoadingUsuarios] = useState(false)
 
+  // Estado del modal de confirmación unificado para Roles
+  const [confirmModal, setConfirmModal] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    onConfirm: null,
+    onCancel: null,
+  })
+
   const cargarRoles = async () => {
     try {
       setLoading(true)
       setError('')
-
       const data = await roleService.listar()
       setRoles(data || [])
     } catch (err) {
@@ -98,7 +106,6 @@ const Roles = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target
-
     setForm((prev) => ({
       ...prev,
       [name]: value,
@@ -121,7 +128,6 @@ const Roles = () => {
   const guardarRole = async () => {
     try {
       const mensajeValidacion = validarFormulario()
-
       if (mensajeValidacion) {
         setError(mensajeValidacion)
         return
@@ -156,26 +162,62 @@ const Roles = () => {
     }
   }
 
-  const eliminarRole = async (role) => {
-    const confirmar = window.confirm(`¿Seguro que deseas desactivar el rol ${role.name}?`)
+  // Modificado: Abre el modal personalizado de CoreUI y soporta alternar ambos estados
+  const confirmarAlternarEstadoRol = (role) => {
+    const accion = role.isActive ? 'desactivar' : 'activar'
+    
+    // Si por alguna razón estuviera el de usuarios de fondo, lo ocultamos temporalmente
+    const estabaUsuariosAbierto = visibleUsuarios
+    if (estabaUsuariosAbierto) setVisibleUsuarios(false)
 
-    if (!confirmar) return
+    setConfirmModal({
+      visible: true,
+      title: `${accion.charAt(0).toUpperCase() + accion.slice(1)} Rol`,
+      message: `¿Seguro que deseas ${accion} el rol ${role.name}?`,
+      onConfirm: () => ejecutarAlternarEstado(role, estabaUsuariosAbierto),
+      onCancel: estabaUsuariosAbierto ? () => setVisibleUsuarios(true) : null,
+    })
+  }
+
+  const ejecutarAlternarEstado = async (role, restaurarUsuarios) => {
+    setConfirmModal((prev) => ({ ...prev, visible: false }))
+    if (restaurarUsuarios) setVisibleUsuarios(true)
 
     try {
       setLoading(true)
       setError('')
       setSuccess('')
 
-      await roleService.eliminar(role.id)
+      if (role.isActive) {
+        // Desactivación lógica tradicional
+        await roleService.eliminar(role.id)
+        setSuccess('Rol desactivado correctamente.')
+      } else {
+        // Activación lógica usando actualización del estado de vuelta a true
+        const payload = {
+          code: role.code,
+          name: role.name,
+          description: role.description,
+          isActive: true,
+        }
+        await roleService.actualizar(role.id, payload)
+        setSuccess('Rol activado correctamente.')
+      }
 
-      setSuccess('Rol desactivado correctamente.')
       await cargarRoles()
     } catch (err) {
       console.error(err)
-      setError('No se pudo desactivar el rol.')
+      setError('No se pudo cambiar el estado del rol.')
     } finally {
       setLoading(false)
     }
+  }
+
+  const cerrarConfirmModal = () => {
+    if (confirmModal.onCancel) {
+      confirmModal.onCancel()
+    }
+    setConfirmModal((prev) => ({ ...prev, visible: false }))
   }
 
   const abrirModalUsuarios = async (role) => {
@@ -187,13 +229,9 @@ const Roles = () => {
       setError('')
 
       const usuarios = await userService.listar()
-
       const usuariosFiltrados = (usuarios || []).filter((usuario) => {
         const rolesUsuario = usuario.roles || []
-
-        return rolesUsuario.some((rol) => {
-          return rol.id === role.id || rol.code === role.code
-        })
+        return rolesUsuario.some((rol) => rol.id === role.id || rol.code === role.code)
       })
 
       setUsuariosAsignados(usuariosFiltrados)
@@ -216,7 +254,6 @@ const Roles = () => {
       <CCard>
         <CCardHeader className="d-flex justify-content-between align-items-center">
           <strong>Administración de Roles</strong>
-
           <CButton color="primary" onClick={abrirModalCrear}>
             Nuevo Rol
           </CButton>
@@ -296,14 +333,14 @@ const Roles = () => {
                           Editar
                         </CButton>
 
+                        {/* Modificado: Botón reactivo e inteligente según el estado real */}
                         <CButton
-                          color="danger"
+                          color={role.isActive ? 'danger' : 'success'}
                           variant="outline"
                           size="sm"
-                          disabled={!role.isActive}
-                          onClick={() => eliminarRole(role)}
+                          onClick={() => confirmarAlternarEstadoRol(role)}
                         >
-                          Desactivar
+                          {role.isActive ? 'Desactivar' : 'Activar'}
                         </CButton>
                       </CTableDataCell>
                     </CTableRow>
@@ -315,11 +352,11 @@ const Roles = () => {
         </CCardBody>
       </CCard>
 
+      {/* MODAL FORMULARIO (CREAR O EDITAR) */}
       <CModal visible={visible} onClose={cerrarModal} backdrop="static">
         <CModalHeader>
           <CModalTitle>{editingRole ? 'Editar Rol' : 'Nuevo Rol'}</CModalTitle>
         </CModalHeader>
-
         <CModalBody>
           <CRow className="g-3">
             <CCol md={6}>
@@ -331,7 +368,6 @@ const Roles = () => {
                 placeholder="Ej: ADMIN"
               />
             </CCol>
-
             <CCol md={6}>
               <CFormLabel>Nombre</CFormLabel>
               <CFormInput
@@ -341,7 +377,6 @@ const Roles = () => {
                 placeholder="Ej: Administrador"
               />
             </CCol>
-
             <CCol md={12}>
               <CFormLabel>Descripción</CFormLabel>
               <CFormInput
@@ -351,7 +386,6 @@ const Roles = () => {
                 placeholder="Descripción del rol"
               />
             </CCol>
-
             <CCol md={6}>
               <CFormLabel>Estado</CFormLabel>
               <CFormSelect value={String(form.isActive)} onChange={handleChangeEstado}>
@@ -361,12 +395,10 @@ const Roles = () => {
             </CCol>
           </CRow>
         </CModalBody>
-
         <CModalFooter>
           <CButton color="secondary" variant="outline" onClick={cerrarModal}>
             Cancelar
           </CButton>
-
           <CButton color="primary" onClick={guardarRole} disabled={saving}>
             {saving ? (
               <>
@@ -379,13 +411,14 @@ const Roles = () => {
           </CButton>
         </CModalFooter>
       </CModal>
-      <CModal visible={visibleUsuarios} onClose={cerrarModalUsuarios} size="lg">
+
+      {/* MODAL VER USUARIOS ASIGNADOS */}
+      <CModal visible={visibleUsuarios} onClose={cerrarModalUsuarios} size="lg" backdrop="static">
         <CModalHeader>
           <CModalTitle>
             Usuarios asignados al rol: {selectedRole?.name}
           </CModalTitle>
         </CModalHeader>
-
         <CModalBody>
           {loadingUsuarios ? (
             <div className="text-center my-4">
@@ -404,7 +437,6 @@ const Roles = () => {
                   <CTableHeaderCell scope="col">Estado</CTableHeaderCell>
                 </CTableRow>
               </CTableHead>
-
               <CTableBody>
                 {usuariosAsignados.length === 0 ? (
                   <CTableRow>
@@ -435,10 +467,27 @@ const Roles = () => {
             </CTable>
           )}
         </CModalBody>
-
         <CModalFooter>
           <CButton color="secondary" variant="outline" onClick={cerrarModalUsuarios}>
             Cerrar
+          </CButton>
+        </CModalFooter>
+      </CModal>
+
+      {/* MODAL DE CONFIRMACIÓN ESTILIZADO (Solución al desplazamiento feo) */}
+      <CModal visible={confirmModal.visible} onClose={cerrarConfirmModal} backdrop="static">
+        <CModalHeader>
+          <CModalTitle>{confirmModal.title}</CModalTitle>
+        </CModalHeader>
+        <CModalBody>
+          <p>{confirmModal.message}</p>
+        </CModalBody>
+        <CModalFooter>
+          <CButton color="secondary" variant="outline" onClick={cerrarConfirmModal}>
+            Cancelar
+          </CButton>
+          <CButton color={confirmModal.title?.includes('Activar') ? 'success' : 'danger'} onClick={confirmModal.onConfirm}>
+            Confirmar
           </CButton>
         </CModalFooter>
       </CModal>

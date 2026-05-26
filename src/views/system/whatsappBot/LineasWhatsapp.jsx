@@ -64,6 +64,14 @@ const LineasWhatsapp = () => {
 
   const [modalError, setModalError] = useState('')
 
+  // Estado unificado para el modal de confirmación genérico/dinámico
+  const [confirmModal, setConfirmModal] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    onConfirm: null,
+  })
+
   useEffect(() => {
     cargarLineas()
   }, [])
@@ -515,12 +523,52 @@ const LineasWhatsapp = () => {
     }
   }
 
-  const desconectarLinea = async (linea) => {
+  // --- Módulos de Confirmación Dinámicos con Modal ---
+
+  const confirmarEliminarLinea = (linea) => {
+    setConfirmModal({
+      visible: true,
+      title: 'Eliminar Línea',
+      message: `¿Seguro que deseas eliminar la línea ${linea.name}?`,
+      onConfirm: () => ejecutarEliminarLinea(linea),
+    })
+  }
+
+  const ejecutarEliminarLinea = async (linea) => {
+    setConfirmModal((prev) => ({ ...prev, visible: false }))
+    try {
+      setLoading(true)
+      setError('')
+      setSuccess('')
+
+      await whatsappLineService.eliminar(linea.id)
+
+      setSuccess('Línea eliminada correctamente.')
+      await cargarLineas()
+    } catch (err) {
+      console.error(err)
+      setError(
+        err?.response?.data?.message ||
+        err?.message ||
+        'No se pudo eliminar la línea.',
+      )
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const confirmarDesconectarLinea = (linea) => {
+    setConfirmModal({
+      visible: true,
+      title: 'Desconectar WhatsApp',
+      message: `¿Seguro que deseas desconectar la línea ${linea.name}?`,
+      onConfirm: () => ejecutarDesconectarLinea(linea),
+    })
+  }
+
+  const ejecutarDesconectarLinea = async (linea) => {
+    setConfirmModal((prev) => ({ ...prev, visible: false }))
     const lineaId = getWorkerLineId(linea)
-    const confirmar = window.confirm(`¿Seguro que deseas desconectar la línea ${linea.name}?`)
-
-    if (!confirmar) return
-
     try {
       setLoading(true)
       setError('')
@@ -546,32 +594,6 @@ const LineasWhatsapp = () => {
         err?.response?.data?.message ||
         err?.message ||
         'No se pudo desconectar la línea.',
-      )
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const eliminarLinea = async (linea) => {
-    const confirmar = window.confirm(`¿Seguro que deseas eliminar la línea ${linea.name}?`)
-
-    if (!confirmar) return
-
-    try {
-      setLoading(true)
-      setError('')
-      setSuccess('')
-
-      await whatsappLineService.eliminar(linea.id)
-
-      setSuccess('Línea eliminada correctamente.')
-      await cargarLineas()
-    } catch (err) {
-      console.error(err)
-      setError(
-        err?.response?.data?.message ||
-        err?.message ||
-        'No se pudo eliminar la línea.',
       )
     } finally {
       setLoading(false)
@@ -839,7 +861,7 @@ const LineasWhatsapp = () => {
                       variant="outline"
                       size="sm"
                       className="me-2 mb-1"
-                      onClick={() => desconectarLinea(linea)}
+                      onClick={() => confirmarDesconectarLinea(linea)}
                     >
                       Desconectar
                     </CButton>
@@ -868,8 +890,7 @@ const LineasWhatsapp = () => {
                       color="danger"
                       variant="outline"
                       size="sm"
-                      className="mb-1"
-                      onClick={() => eliminarLinea(linea)}
+                      onClick={() => confirmarEliminarLinea(linea)}
                     >
                       Eliminar
                     </CButton>
@@ -881,14 +902,13 @@ const LineasWhatsapp = () => {
         </CCardBody>
       </CCard>
 
+      {/* Form Modal */}
       <CModal visible={visibleForm} onClose={cerrarForm} backdrop="static">
         <CModalHeader>
           <CModalTitle>{isEditing ? 'Editar línea' : 'Nueva línea'}</CModalTitle>
         </CModalHeader>
-
         <CModalBody>
           {modalError && <CAlert color="danger">{modalError}</CAlert>}
-
           <CForm>
             <CRow className="mb-3">
               <CCol md={6}>
@@ -899,11 +919,8 @@ const LineasWhatsapp = () => {
                   disabled={isEditing}
                   onChange={(e) => handleChange('code', e.target.value)}
                 />
-                <div className="form-text">
-                  Este código se usará también como ID del worker.
-                </div>
+                <div className="form-text">Este código se usará también como ID del worker.</div>
               </CCol>
-
               <CCol md={6}>
                 <CFormLabel>Nombre</CFormLabel>
                 <CFormInput
@@ -913,7 +930,6 @@ const LineasWhatsapp = () => {
                 />
               </CCol>
             </CRow>
-
             <CRow className="mb-3">
               <CCol md={12}>
                 <CFormLabel>Teléfono</CFormLabel>
@@ -924,7 +940,6 @@ const LineasWhatsapp = () => {
                 />
               </CCol>
             </CRow>
-
             <CRow className="mb-3">
               <CCol md={12}>
                 <CFormLabel>Descripción</CFormLabel>
@@ -936,7 +951,6 @@ const LineasWhatsapp = () => {
                 />
               </CCol>
             </CRow>
-
             <CFormCheck
               id="isActive"
               label="Activa"
@@ -945,12 +959,10 @@ const LineasWhatsapp = () => {
             />
           </CForm>
         </CModalBody>
-
         <CModalFooter>
           <CButton color="secondary" variant="outline" onClick={cerrarForm} disabled={saving}>
             Cancelar
           </CButton>
-
           <CButton color="primary" onClick={guardarLinea} disabled={saving}>
             {saving && <CSpinner size="sm" className="me-2" />}
             Guardar
@@ -958,20 +970,18 @@ const LineasWhatsapp = () => {
         </CModalFooter>
       </CModal>
 
+      {/* QR Modal */}
       <CModal visible={visibleQr} onClose={() => setVisibleQr(false)} size="lg">
         <CModalHeader>
           <CModalTitle>QR WhatsApp</CModalTitle>
         </CModalHeader>
-
         <CModalBody>
           {modalError && <CAlert color="danger">{modalError}</CAlert>}
-
           {selectedLine && (
             <>
               <CAlert color={selectedLine.tieneQr ? 'success' : 'warning'}>
                 {selectedLine.qrStatus || 'Consulta el QR para vincular la línea.'}
               </CAlert>
-
               <div className="mb-3">
                 <strong>Línea:</strong> {selectedLine.name}
                 <br />
@@ -979,7 +989,6 @@ const LineasWhatsapp = () => {
                 <br />
                 <strong>Estado:</strong> {selectedLine.workerStatus || '-'}
               </div>
-
               {selectedLine.qrCode ? (
                 <div className="text-center">
                   <img
@@ -994,7 +1003,6 @@ const LineasWhatsapp = () => {
                       padding: 8,
                     }}
                   />
-
                   <div className="text-body-secondary mt-3">
                     Escanea desde WhatsApp &gt; Dispositivos vinculados.
                   </div>
@@ -1007,7 +1015,6 @@ const LineasWhatsapp = () => {
             </>
           )}
         </CModalBody>
-
         <CModalFooter>
           {selectedLine && (
             <CButton
@@ -1018,21 +1025,19 @@ const LineasWhatsapp = () => {
               Refrescar QR
             </CButton>
           )}
-
           <CButton color="secondary" onClick={() => setVisibleQr(false)}>
             Cerrar
           </CButton>
         </CModalFooter>
       </CModal>
 
+      {/* Test Message Modal */}
       <CModal visible={visibleTest} onClose={() => setVisibleTest(false)}>
         <CModalHeader>
           <CModalTitle>Enviar mensaje de prueba</CModalTitle>
         </CModalHeader>
-
         <CModalBody>
           {modalError && <CAlert color="danger">{modalError}</CAlert>}
-
           <div className="mb-3">
             <CFormLabel>Destino</CFormLabel>
             <CFormInput
@@ -1049,7 +1054,6 @@ const LineasWhatsapp = () => {
               Puedes escribir 0996631782, 996631782 o 593996631782. El sistema lo enviará como 593996631782@c.us.
             </div>
           </div>
-
           <div className="mb-3">
             <CFormLabel>Mensaje</CFormLabel>
             <CFormTextarea
@@ -1065,15 +1069,41 @@ const LineasWhatsapp = () => {
             />
           </div>
         </CModalBody>
-
         <CModalFooter>
           <CButton color="secondary" variant="outline" onClick={() => setVisibleTest(false)}>
             Cancelar
           </CButton>
-
           <CButton color="primary" onClick={enviarMensajePrueba} disabled={saving}>
             {saving && <CSpinner size="sm" className="me-2" />}
             Enviar
+          </CButton>
+        </CModalFooter>
+      </CModal>
+
+      {/* MODAL GLOBAL/DINÁMICO DE CONFIRMACIÓN (Eliminar / Desconectar) */}
+      <CModal 
+        visible={confirmModal.visible} 
+        onClose={() => setConfirmModal((prev) => ({ ...prev, visible: false }))}
+      >
+        <CModalHeader>
+          <CModalTitle>{confirmModal.title}</CModalTitle>
+        </CModalHeader>
+        <CModalBody>
+          {confirmModal.message}
+        </CModalBody>
+        <CModalFooter>
+          <CButton 
+            color="secondary" 
+            variant="outline" 
+            onClick={() => setConfirmModal((prev) => ({ ...prev, visible: false }))}
+          >
+            Cancelar
+          </CButton>
+          <CButton 
+            color="danger" 
+            onClick={confirmModal.onConfirm}
+          >
+            Confirmar
           </CButton>
         </CModalFooter>
       </CModal>

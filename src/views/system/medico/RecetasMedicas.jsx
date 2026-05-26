@@ -73,6 +73,67 @@ const RecetasMedicas = () => {
   const [modalError, setModalError] = useState('')
   const [success, setSuccess] = useState('')
 
+  // ============================
+  // ✅ Modal de confirmación (CoreUI)
+  // ============================
+  const [visibleConfirm, setVisibleConfirm] = useState(false)
+  const [confirmTitle, setConfirmTitle] = useState('Confirmación')
+  const [confirmMessage, setConfirmMessage] = useState('')
+  const [confirmVariant, setConfirmVariant] = useState('info') // info | warning | danger | success
+  const [confirmButtonText, setConfirmButtonText] = useState('Confirmar')
+  const [confirmCancelText, setConfirmCancelText] = useState('Cancelar')
+  const [confirmAction, setConfirmAction] = useState(null)
+  const [confirmProcessing, setConfirmProcessing] = useState(false)
+
+  const abrirConfirmacion = ({
+    title = 'Confirmación',
+    message = '¿Estás seguro/a de continuar?',
+    variant = 'info',
+    confirmText = 'Sí, continuar',
+    cancelText = 'No, volver',
+    onConfirm = null,
+  }) => {
+    setConfirmTitle(title)
+    setConfirmMessage(message)
+    setConfirmVariant(variant)
+    setConfirmButtonText(confirmText)
+    setConfirmCancelText(cancelText)
+    setConfirmAction(() => onConfirm)
+    setConfirmProcessing(false)
+    setVisibleConfirm(true)
+  }
+
+  const cerrarConfirmacion = () => {
+    if (confirmProcessing) return
+    setVisibleConfirm(false)
+    setConfirmTitle('Confirmación')
+    setConfirmMessage('')
+    setConfirmVariant('info')
+    setConfirmButtonText('Confirmar')
+    setConfirmCancelText('Cancelar')
+    setConfirmAction(null)
+    setConfirmProcessing(false)
+  }
+
+  const confirmarAccion = async () => {
+    if (!confirmAction) {
+      cerrarConfirmacion()
+      return
+    }
+
+    try {
+      setConfirmProcessing(true)
+      await confirmAction()
+      cerrarConfirmacion()
+    } catch (e) {
+      // Si algo falla, no cierro el modal automáticamente; dejo que el usuario vea el error en la pantalla
+      console.error(e)
+      cerrarConfirmacion()
+    } finally {
+      setConfirmProcessing(false)
+    }
+  }
+
   const cargarAtenciones = async () => {
     try {
       const data = await medicalAttentionService.listar()
@@ -129,13 +190,7 @@ const RecetasMedicas = () => {
   }
 
   const cargarTodo = async () => {
-    await Promise.all([
-      cargarAtenciones(),
-      cargarRecetas(),
-      cargarDetalles(),
-      cargarPacientes(),
-      cargarCitas(),
-    ])
+    await Promise.all([cargarAtenciones(), cargarRecetas(), cargarDetalles(), cargarPacientes(), cargarCitas()])
   }
 
   useEffect(() => {
@@ -181,9 +236,7 @@ const RecetasMedicas = () => {
 
     const appointment = obtenerCita(attention.appointmentId)
     const patient = appointment?.patient || obtenerPaciente(appointment?.patientId)
-    const patientName = patient
-      ? `${patient.firstName || ''} ${patient.lastName || ''}`.trim()
-      : 'Paciente sin identificar'
+    const patientName = patient ? `${patient.firstName || ''} ${patient.lastName || ''}`.trim() : 'Paciente sin identificar'
 
     return `${patientName} - ${attention.reasonConsultation || 'Atención médica'}`
   }
@@ -207,11 +260,7 @@ const RecetasMedicas = () => {
         .join(' ')
         .toLowerCase()
 
-      return (
-        patientName.includes(texto) ||
-        indications.includes(texto) ||
-        detailText.includes(texto)
-      )
+      return patientName.includes(texto) || indications.includes(texto) || detailText.includes(texto)
     })
   }, [recetas, detalles, search, pacientes, citas, atenciones])
 
@@ -402,47 +451,58 @@ const RecetasMedicas = () => {
   }
 
   const eliminarMedicamento = async (detail) => {
-    const confirmar = window.confirm(`¿Seguro que deseas eliminar el medicamento ${detail.medicine}?`)
+    abrirConfirmacion({
+      title: 'Eliminar medicamento',
+      variant: 'danger',
+      message: `¿Deseas eliminar el medicamento "${detail.medicine}"? Esta acción no se puede deshacer.`,
+      confirmText: 'Eliminar',
+      cancelText: 'Cancelar',
+      onConfirm: async () => {
+        try {
+          setLoading(true)
+          setError('')
+          setSuccess('')
 
-    if (!confirmar) return
+          await medicalPrescriptionDetailService.eliminar(detail.id)
 
-    try {
-      setLoading(true)
-      setError('')
-      setSuccess('')
-
-      await medicalPrescriptionDetailService.eliminar(detail.id)
-
-      setSuccess('Medicamento eliminado correctamente.')
-      await cargarDetalles()
-    } catch (err) {
-      console.error(err)
-      setError(err?.data?.message || err?.message || 'No se pudo eliminar el medicamento.')
-    } finally {
-      setLoading(false)
-    }
+          setSuccess('Medicamento eliminado correctamente.')
+          await cargarDetalles()
+        } catch (err) {
+          console.error(err)
+          setError(err?.data?.message || err?.message || 'No se pudo eliminar el medicamento.')
+        } finally {
+          setLoading(false)
+        }
+      },
+    })
   }
 
   const enviarPorWhatsapp = async (prescription) => {
-    const confirmar = window.confirm('¿Deseas enviar esta receta por WhatsApp?')
+    const paciente = obtenerNombrePacientePorReceta(prescription)
+    abrirConfirmacion({
+      title: 'Enviar por WhatsApp',
+      variant: 'info',
+      message: `¿Deseas enviar esta receta por WhatsApp${paciente && paciente !== '-' ? ` al paciente "${paciente}"` : ''}?`,
+      confirmText: 'Sí, enviar',
+      cancelText: 'No, todavía no',
+      onConfirm: async () => {
+        try {
+          setLoading(true)
+          setError('')
+          setSuccess('')
 
-    if (!confirmar) return
+          await medicalPrescriptionService.enviarWhatsapp(prescription.id)
 
-    try {
-      setLoading(true)
-      setError('')
-      setSuccess('')
-
-      await medicalPrescriptionService.enviarWhatsapp(prescription.id)
-
-      setSuccess('Receta enviada por WhatsApp correctamente.')
-      await cargarRecetas()
-    } catch (err) {
-      console.error(err)
-      setError(err?.data?.message || err?.message || 'No se pudo enviar la receta por WhatsApp.')
-    } finally {
-      setLoading(false)
-    }
+          setSuccess('Receta enviada por WhatsApp correctamente.')
+          await cargarRecetas()
+        } catch (err) {
+          console.error(err)
+          setError(err?.data?.message || err?.message || 'No se pudo enviar la receta por WhatsApp.')
+        } finally {
+          setLoading(false)
+        }
+      },
+    })
   }
 
   const verReceta = (prescription) => {
@@ -456,35 +516,40 @@ const RecetasMedicas = () => {
   }
 
   const eliminarReceta = async (prescription) => {
-    const confirmar = window.confirm('¿Seguro que deseas eliminar esta receta?')
+    const paciente = obtenerNombrePacientePorReceta(prescription)
 
-    if (!confirmar) return
+    abrirConfirmacion({
+      title: 'Eliminar receta',
+      variant: 'danger',
+      message: `¿Deseas eliminar esta receta${
+        paciente && paciente !== '-' ? ` del paciente "${paciente}"` : ''
+      }? Esta acción no se puede deshacer.`,
+      confirmText: 'Eliminar',
+      cancelText: 'Cancelar',
+      onConfirm: async () => {
+        try {
+          setLoading(true)
+          setError('')
+          setSuccess('')
 
-    try {
-      setLoading(true)
-      setError('')
-      setSuccess('')
+          await medicalPrescriptionService.eliminar(prescription.id)
 
-      await medicalPrescriptionService.eliminar(prescription.id)
-
-      setSuccess('Receta eliminada correctamente.')
-      await cargarRecetas()
-      await cargarDetalles()
-    } catch (err) {
-      console.error(err)
-      setError(err?.data?.message || err?.message || 'No se pudo eliminar la receta.')
-    } finally {
-      setLoading(false)
-    }
+          setSuccess('Receta eliminada correctamente.')
+          await cargarRecetas()
+          await cargarDetalles()
+        } catch (err) {
+          console.error(err)
+          setError(err?.data?.message || err?.message || 'No se pudo eliminar la receta.')
+        } finally {
+          setLoading(false)
+        }
+      },
+    })
   }
 
   const estaEnviada = (prescription) => {
     return Boolean(
-      prescription.sentWhatsappAt ||
-        prescription.sentAt ||
-        prescription.isSent ||
-        prescription.wasSent ||
-        prescription.isSentWhatsapp,
+      prescription.sentWhatsappAt || prescription.sentAt || prescription.isSent || prescription.wasSent || prescription.isSentWhatsapp,
     )
   }
 
@@ -727,22 +792,12 @@ const RecetasMedicas = () => {
 
             <CCol md={4}>
               <CFormLabel>Orden</CFormLabel>
-              <CFormInput
-                type="number"
-                name="order"
-                value={detailForm.order || 1}
-                onChange={handleDetailChange}
-              />
+              <CFormInput type="number" name="order" value={detailForm.order || 1} onChange={handleDetailChange} />
             </CCol>
 
             <CCol md={4}>
               <CFormLabel>Dosis</CFormLabel>
-              <CFormInput
-                name="dose"
-                value={detailForm.dose || ''}
-                onChange={handleDetailChange}
-                placeholder="Ej: 2ml"
-              />
+              <CFormInput name="dose" value={detailForm.dose || ''} onChange={handleDetailChange} placeholder="Ej: 2ml" />
             </CCol>
 
             <CCol md={4}>
@@ -818,8 +873,7 @@ const RecetasMedicas = () => {
                   </p>
 
                   <p>
-                    <strong>Indicaciones generales:</strong>{' '}
-                    {selectedPrescription.generalIndications || '-'}
+                    <strong>Indicaciones generales:</strong> {selectedPrescription.generalIndications || '-'}
                   </p>
 
                   <p>
@@ -873,12 +927,7 @@ const RecetasMedicas = () => {
                             Editar medicamento
                           </CButton>
 
-                          <CButton
-                            color="danger"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => eliminarMedicamento(detail)}
-                          >
+                          <CButton color="danger" variant="outline" size="sm" onClick={() => eliminarMedicamento(detail)}>
                             Eliminar medicamento
                           </CButton>
                         </CTableDataCell>
@@ -898,11 +947,7 @@ const RecetasMedicas = () => {
 
           {selectedPrescription && (
             <>
-              <CButton
-                color="primary"
-                variant="outline"
-                onClick={() => abrirModalAgregarMedicamento(selectedPrescription)}
-              >
+              <CButton color="primary" variant="outline" onClick={() => abrirModalAgregarMedicamento(selectedPrescription)}>
                 Agregar medicamento
               </CButton>
 
@@ -911,6 +956,41 @@ const RecetasMedicas = () => {
               </CButton>
             </>
           )}
+        </CModalFooter>
+      </CModal>
+
+      {/* ✅ Modal global de confirmación */}
+      <CModal visible={visibleConfirm} onClose={cerrarConfirmacion} backdrop="static">
+        <CModalHeader>
+          <CModalTitle>{confirmTitle}</CModalTitle>
+        </CModalHeader>
+
+        <CModalBody>
+          
+          <p className="mb-0">
+            Si no estás seguro/a, puedes presionar <strong>{confirmCancelText}</strong>.
+          </p>
+        </CModalBody>
+
+        <CModalFooter>
+          <CButton color="secondary" variant="outline" onClick={cerrarConfirmacion} disabled={confirmProcessing}>
+            {confirmCancelText}
+          </CButton>
+
+          <CButton
+            color={confirmVariant === 'danger' ? 'danger' : confirmVariant === 'warning' ? 'warning' : 'primary'}
+            onClick={confirmarAccion}
+            disabled={confirmProcessing}
+          >
+            {confirmProcessing ? (
+              <>
+                <CSpinner size="sm" className="me-2" />
+                Procesando...
+              </>
+            ) : (
+              confirmButtonText
+            )}
+          </CButton>
         </CModalFooter>
       </CModal>
     </>

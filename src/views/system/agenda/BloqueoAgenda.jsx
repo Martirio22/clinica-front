@@ -59,6 +59,22 @@ const BloqueoAgenda = () => {
   const [modalError, setModalError] = useState('')
   const [success, setSuccess] = useState('')
 
+  // Estado estructurado para el modal de confirmación dinámico
+  const [confirmModal, setConfirmModal] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    onConfirm: null,
+  })
+
+  // Temporizador para desvanecer la alerta de éxito automáticamente
+  useEffect(() => {
+    if (success) {
+      const timer = setTimeout(() => setSuccess(''), 3500)
+      return () => clearTimeout(timer)
+    }
+  }, [success])
+
   const cargarMedicos = async () => {
     try {
       const data = await doctorService.listar()
@@ -309,28 +325,51 @@ const BloqueoAgenda = () => {
     }
   }
 
-  const eliminarBloqueo = async (block) => {
-    const confirmar = window.confirm(
-      `¿Seguro que deseas eliminar el bloqueo de ${obtenerNombreMedico(block.doctorId)}?`,
-    )
+  // Prepara y despliega el modal dinámico de confirmación de estado
+  const confirmarAlternarEstadoBloqueo = (block) => {
+    const accion = block.isActive ? 'inactivar' : 'activar'
+    setConfirmModal({
+      visible: true,
+      title: `${accion.charAt(0).toUpperCase() + accion.slice(1)} Bloqueo de Agenda`,
+      message: `¿Seguro que deseas ${accion} el bloqueo para el doctor ${obtenerNombreMedico(block.doctorId)}?`,
+      onConfirm: () => ejecutarAlternarEstado(block),
+    })
+  }
 
-    if (!confirmar) return
-
+  const ejecutarAlternarEstado = async (block) => {
+    setConfirmModal((prev) => ({ ...prev, visible: false }))
     try {
       setLoading(true)
       setError('')
       setSuccess('')
 
-      await scheduleBlockService.eliminar(block.id)
+      if (block.isActive) {
+        await scheduleBlockService.eliminar(block.id)
+        setSuccess('Bloqueo inactivado correctamente.')
+      } else {
+        const payload = {
+          doctorId: block.doctorId,
+          blockingTypeId: block.blockingTypeId,
+          startDate: block.startDate,
+          endDate: block.endDate,
+          reason: block.reason || null,
+          isActive: true,
+        }
+        await scheduleBlockService.actualizar(block.id, payload)
+        setSuccess('Bloqueo activado correctamente.')
+      }
 
-      setSuccess('Bloqueo eliminado correctamente.')
       await cargarBloqueos()
     } catch (err) {
       console.error(err)
-      setError('No se pudo eliminar el bloqueo.')
+      setError('No se pudo cambiar el estado del bloqueo de agenda.')
     } finally {
       setLoading(false)
     }
+  }
+
+  const cerrarConfirmModal = () => {
+    setConfirmModal((prev) => ({ ...prev, visible: false }))
   }
 
   return (
@@ -468,13 +507,12 @@ const BloqueoAgenda = () => {
                         </CButton>
 
                         <CButton
-                          color="danger"
+                          color={block.isActive ? 'danger' : 'success'}
                           variant="outline"
                           size="sm"
-                          disabled={!block.isActive}
-                          onClick={() => eliminarBloqueo(block)}
+                          onClick={() => confirmarAlternarEstadoBloqueo(block)}
                         >
-                          Eliminar
+                          {block.isActive ? 'Inactivar' : 'Activar'}
                         </CButton>
                       </CTableDataCell>
                     </CTableRow>
@@ -486,6 +524,7 @@ const BloqueoAgenda = () => {
         </CCardBody>
       </CCard>
 
+      {/* MODAL FORMULARIO DE BLOQUEO */}
       <CModal visible={visible} onClose={cerrarModal} backdrop="static" size="lg">
         <CModalHeader>
           <CModalTitle>{editingBlock ? 'Editar bloqueo' : 'Nuevo bloqueo'}</CModalTitle>
@@ -611,6 +650,27 @@ const BloqueoAgenda = () => {
             ) : (
               'Guardar'
             )}
+          </CButton>
+        </CModalFooter>
+      </CModal>
+
+      {/* MODAL DE CONFIRMACIÓN DINÁMICO */}
+      <CModal visible={confirmModal.visible} onClose={cerrarConfirmModal} backdrop="static">
+        <CModalHeader>
+          <CModalTitle>{confirmModal.title}</CModalTitle>
+        </CModalHeader>
+        <CModalBody>
+          <p>{confirmModal.message}</p>
+        </CModalBody>
+        <CModalFooter>
+          <CButton color="secondary" variant="outline" onClick={cerrarConfirmModal}>
+            Cancelar
+          </CButton>
+          <CButton 
+            color={confirmModal.title?.includes('Activar') ? 'success' : 'danger'} 
+            onClick={confirmModal.onConfirm}
+          >
+            Confirmar
           </CButton>
         </CModalFooter>
       </CModal>

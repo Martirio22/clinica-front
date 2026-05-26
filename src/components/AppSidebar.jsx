@@ -53,6 +53,7 @@ const AppSidebar = () => {
     const isMedico = roles.includes('MEDICO')
     const isAsistente = roles.includes('ASISTENTE')
     const isEnfermero = roles.includes('ENFERMERO')
+    const hasAnyRole = roles.length > 0
 
     const menu = [
       
@@ -94,18 +95,20 @@ const AppSidebar = () => {
       )
     }
 
-    menu.push(
-      { component: CNavTitle, name: 'Pacientes' },
-      {
-        component: CNavGroup,
-        name: 'Gestión de Pacientes',
-        to: '/pacientes',
-        icon: <CIcon icon={cilPeople} customClassName="nav-icon" />,
-        items: [
-          { component: CNavItem, name: 'Pacientes', to: '/pacientes/pacientes' },
-        ],
-      }
-    )
+    if (hasAnyRole) {
+      menu.push(
+        { component: CNavTitle, name: 'Pacientes' },
+        {
+          component: CNavGroup,
+          name: 'Gestión de Pacientes',
+          to: '/pacientes',
+          icon: <CIcon icon={cilPeople} customClassName="nav-icon" />,
+          items: [
+            { component: CNavItem, name: 'Pacientes', to: '/pacientes/pacientes' },
+          ],
+        }
+      )
+    }
 
     const agendaItems = []
     if (isAdmin || isMedico) {
@@ -163,8 +166,42 @@ const AppSidebar = () => {
           items: [
             { component: CNavItem, name: 'Dashboard del Médico', to: '/medico/dashboard' },
             { component: CNavItem, name: 'Mi Calendario', to: '/medico/mi-calendario' },
-            { component: CNavItem, name: 'Atención Médica', to: '/medico/atencion-medica' },
+            //{ component: CNavItem, name: 'Atención Médica', to: '/medico/atencion-medica' },
             { component: CNavItem, name: 'Recetas Médicas', to: '/medico/recetas-medicas' },
+          ],
+        }
+      )
+    }
+
+    if (isEnfermero) {
+      menu.push(
+        { component: CNavTitle, name: 'Pantalla Enfermero' },
+        {
+          component: CNavGroup,
+          name: 'Enfermero',
+          to: '/enfermero',
+          icon: <CIcon icon={cilNotes} customClassName="nav-icon" />,
+          items: [
+            { component: CNavItem, name: 'Paciente del Día', to: '/enfermero/paciente-del-dia' },
+          ],
+        }
+      )
+    }
+
+    if (isAdmin || isAsistente) {
+      menu.push(
+        { component: CNavTitle, name: 'Pantallas de WhatsApp / Bot' },
+        {
+          component: CNavGroup,
+          name: 'WhatsApp / Bot',
+          to: '/whatsapp-bot',
+          icon: <CIcon icon={cilNotes} customClassName="nav-icon" />,
+          items: [
+            { component: CNavItem, name: 'Líneas WhatsApp', to: '/whatsapp-bot/lineas-whatsapp' },
+            { component: CNavItem, name: 'Menús del Bot', to: '/whatsapp-bot/menus-bot' },
+            { component: CNavItem, name: 'Intenciones IA', to: '/whatsapp-bot/intenciones-ia' },
+            { component: CNavItem, name: 'Eventos IA', to: '/whatsapp-bot/eventos-ia' },
+            { component: CNavItem, name: 'Estados Sesión Chat', to: '/whatsapp-bot/estados-sesion-chat' },
           ],
         }
       )

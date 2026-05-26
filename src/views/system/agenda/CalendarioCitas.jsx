@@ -67,6 +67,16 @@ function todayStr() {
   return fmtDate(new Date())
 }
 
+// ─── color helpers ───────────────────────────────────────────────────────────
+
+function getColorEstado(code = '') {
+  const c = String(code).toUpperCase()
+  if (c.includes('CONFIRM')) return 'success'
+  if (c.includes('CANCEL')) return 'danger'
+  if (c.includes('NO_SHOW') || c.includes('NO_ASIST')) return 'warning'
+  return 'info'
+}
+
 function getDiasDelMes(year, month) {
   const primer = new Date(year, month, 1)
   const ultimo = new Date(year, month + 1, 0)
@@ -103,16 +113,6 @@ function formatearFechaHora(value) {
     day: '2-digit', month: '2-digit', year: 'numeric',
     hour: '2-digit', minute: '2-digit',
   })
-}
-
-// ─── color helpers ───────────────────────────────────────────────────────────
-
-function getColorEstado(code = '') {
-  const c = String(code).toUpperCase()
-  if (c.includes('CONFIRM')) return 'success'
-  if (c.includes('CANCEL')) return 'danger'
-  if (c.includes('NO_SHOW') || c.includes('NO_ASIST')) return 'warning'
-  return 'info'
 }
 
 // Pill colors rendered inside calendar cells (inline style to avoid CoreUI dependency)
@@ -221,6 +221,10 @@ const CalendarioCitas = () => {
   const [visible, setVisible] = useState(false)
   const [visibleDetalle, setVisibleDetalle] = useState(false)
 
+  // Estados para el nuevo modal de confirmación de acciones alternativas
+  const [visibleConfirmacion, setVisibleConfirmacion] = useState(false)
+  const [datosConfirmacion, setDatosConfirmacion] = useState({ cita: null, accion: '', titulo: '', mensaje: '', colorBoton: 'primary' })
+
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear())
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth())
   const [selectedDate, setSelectedDate] = useState(todayStr())
@@ -295,7 +299,6 @@ const CalendarioCitas = () => {
     })
   }, [citas, filtroSpecialtyId, filtroStatusId])
 
-  // Pre-compute patient/doctor names into citas for cheaper rendering
   const citasConNombres = useMemo(() => {
     return citasFiltradas.map((c) => {
       const pac = pacientes.find((p) => p.id === c.patientId)
@@ -316,17 +319,16 @@ const CalendarioCitas = () => {
 
   const diasDelMes = useMemo(() => getDiasDelMes(currentYear, currentMonth), [currentYear, currentMonth])
 
-const citasPorFecha = useMemo(() => {
-  const map = {}
-  citasConNombres.forEach((c) => {
-    if (!c.startDate) return
-    const key = fmtDate(new Date(c.startDate))
-    
-    if (!map[key]) map[key] = []
-    map[key].push(c)
-  })
-  return map
-}, [citasConNombres])
+  const citasPorFecha = useMemo(() => {
+    const map = {}
+    citasConNombres.forEach((c) => {
+      if (!c.startDate) return
+      const key = fmtDate(new Date(c.startDate))
+      if (!map[key]) map[key] = []
+      map[key].push(c)
+    })
+    return map
+  }, [citasConNombres])
 
   const citasDelDia = useMemo(() => {
     return (citasPorFecha[selectedDate] || []).sort((a, b) =>
@@ -472,15 +474,38 @@ const citasPorFecha = useMemo(() => {
     }
   }
 
-  const cancelarCita = async (cita) => {
-    if (!window.confirm('¿Seguro que deseas cancelar esta cita?')) return
-    await cambiarEstado(cita, 'cancelar')
+  // Confirmar de manera directa (Sin diálogo de confirmación adicional)
+  const confirmarCita = (cita) => cambiarEstado(cita, 'confirmar')
+
+  // Manejadores que ahora abren el modal controlado en vez de window.confirm
+  const solicitarCancelarCita = (cita) => {
+    setDatosConfirmacion({
+      cita,
+      accion: 'cancelar',
+      titulo: 'Confirmar cancelación de cita',
+      mensaje: `¿Está seguro de que desea cancelar la cita de ${cita._pacienteNombre}? Esta acción modificará el estado del registro actual.`,
+      colorBoton: 'danger'
+    })
+    setVisibleConfirmacion(true)
   }
 
-  const confirmarCita = (cita) => cambiarEstado(cita, 'confirmar')
-  const marcarNoAsistio = async (cita) => {
-    if (!window.confirm('¿Marcar esta cita como no asistió?')) return
-    await cambiarEstado(cita, 'noAsistio')
+  const solicitarMarcarNoAsistio = (cita) => {
+    setDatosConfirmacion({
+      cita,
+      accion: 'noAsistio',
+      titulo: 'Confirmar inasistencia',
+      mensaje: `¿Desea marcar la cita de ${cita._pacienteNombre} con el estado de "No asistió"?`,
+      colorBoton: 'dark'
+    })
+    setVisibleConfirmacion(true)
+  }
+
+  const ejecutarAccionConfirmada = async () => {
+    const { cita, accion } = datosConfirmacion
+    setVisibleConfirmacion(false)
+    if (cita && accion) {
+      await cambiarEstado(cita, accion)
+    }
   }
 
   // ── selected date label ───────────────────────────────────────────────────
@@ -677,10 +702,10 @@ const citasPorFecha = useMemo(() => {
                           <CButton color="success" variant="outline" size="sm" onClick={() => confirmarCita(cita)}>
                             <CIcon icon={cilCheckAlt} />
                           </CButton>
-                          <CButton color="danger" variant="outline" size="sm" onClick={() => cancelarCita(cita)}>
+                          <CButton color="danger" variant="outline" size="sm" onClick={() => solicitarCancelarCita(cita)}>
                             <CIcon icon={cilBan} />
                           </CButton>
-                          <CButton color="dark" variant="outline" size="sm" style={{ fontSize: 11 }} onClick={() => marcarNoAsistio(cita)}>
+                          <CButton color="dark" variant="outline" size="sm" style={{ fontSize: 11 }} onClick={() => solicitarMarcarNoAsistio(cita)}>
                             No asistió
                           </CButton>
                         </div>
@@ -807,6 +832,24 @@ const citasPorFecha = useMemo(() => {
               <CIcon icon={cilPencil} className="me-1" /> Editar
             </CButton>
           )}
+        </CModalFooter>
+      </CModal>
+
+      {/* ── NUEVO: Modal Único para Confirmación de Cancelar / Inasistencia ── */}
+      <CModal visible={visibleConfirmacion} onClose={() => setVisibleConfirmacion(false)} backdrop="static">
+        <CModalHeader>
+          <CModalTitle>{datosConfirmacion.titulo}</CModalTitle>
+        </CModalHeader>
+        <CModalBody>
+          <p className="mb-0">{datosConfirmacion.mensaje}</p>
+        </CModalBody>
+        <CModalFooter>
+          <CButton color="secondary" variant="outline" onClick={() => setVisibleConfirmacion(false)}>
+            Descartar
+          </CButton>
+          <CButton color={datosConfirmacion.colorBoton} onClick={ejecutarAccionConfirmada}>
+            Confirmar
+          </CButton>
         </CModalFooter>
       </CModal>
     </>

@@ -66,6 +66,10 @@ const Login = () => {
         // Nota: Asegúrate de que coincida con la ruta exacta configurada en tus routes.js
         navigate('/asistente-clinico/dashboard', { replace: true }) 
       } 
+      else if (roles.includes('ENFERMERO')) {
+        console.log('Redirigiendo al entorno de ENFERMERO...')
+        navigate('/enfermero/paciente-del-dia', { replace: true })
+      }
       else if (roles.includes('ADMIN')) {
         console.log('Redirigiendo al entorno de ADMINISTRADOR...')
         navigate('/dashboard', { replace: true })
