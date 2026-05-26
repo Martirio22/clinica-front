@@ -32,9 +32,6 @@ export const getSidebarNav = (userRoles = []) => {
 
   const menu = []
 
-  // ==========================================
-  // DASHBOARD (Visible para todos los logueados)
-  // ==========================================
   if (isAdmin) {
     menu.push({
       component: CNavItem,
@@ -44,9 +41,6 @@ export const getSidebarNav = (userRoles = []) => {
     })
   }
 
-  // ==========================================
-  // SECCIÓN: ADMINISTRACIÓN Y CLÍNICA (ESTRICTO SOLO ADMIN)
-  // ==========================================
   if (isAdmin) {
     menu.push(
       {
@@ -91,9 +85,6 @@ export const getSidebarNav = (userRoles = []) => {
     )
   }
 
-  // ==========================================
-  // SECCIÓN: PACIENTES (ADMIN, MEDICO, ASISTENTE)
-  // ==========================================
   if (hasAnyRole) {
     menu.push(
       {
@@ -116,9 +107,6 @@ export const getSidebarNav = (userRoles = []) => {
     )
   }
 
-  // ==========================================
-  // SECCIÓN: AGENDA (Muestra sub-ítems según rol)
-  // ==========================================
   const agendaItems = []
 
   if (isAdmin || isMedico) {
@@ -158,9 +146,70 @@ export const getSidebarNav = (userRoles = []) => {
     )
   }
 
-  // ==========================================
-  // SECCIÓN: AUTORIZACIONES (ADMIN y ASISTENTE)
-  // ==========================================
+  if (isEnfermero) {
+    menu.push(
+      {
+        component: CNavTitle,
+        name: 'Pantalla Enfermero',
+      },
+      {
+        component: CNavGroup,
+        name: 'Enfermero',
+        to: '/enfermero',
+        icon: <CIcon icon={cilNotes} customClassName="nav-icon" />,
+        items: [
+          {
+            component: CNavItem,
+            name: 'Paciente del Día',
+            to: '/enfermero/paciente-del-dia',
+          },
+        ],
+      }
+    )
+  }
+
+  if (isAdmin || isAsistente) {
+    menu.push(
+      {
+        component: CNavTitle,
+        name: 'Pantallas de WhatsApp / Bot',
+      },
+      {
+        component: CNavGroup,
+        name: 'WhatsApp / Bot',
+        to: '/whatsapp-bot',
+        icon: <CIcon icon={cilNotes} customClassName="nav-icon" />,
+        items: [
+          {
+            component: CNavItem,
+            name: 'Líneas WhatsApp',
+            to: '/whatsapp-bot/lineas-whatsapp',
+          },
+          {
+            component: CNavItem,
+            name: 'Menús del Bot',
+            to: '/whatsapp-bot/menus-bot',
+          },
+          {
+            component: CNavItem,
+            name: 'Intenciones IA',
+            to: '/whatsapp-bot/intenciones-ia',
+          },
+          {
+            component: CNavItem,
+            name: 'Eventos IA',
+            to: '/whatsapp-bot/eventos-ia',
+          },
+          {
+            component: CNavItem,
+            name: 'Estados Sesión Chat',
+            to: '/whatsapp-bot/estados-sesion-chat',
+          },
+        ],
+      }
+    )
+  }
+
   if (isAdmin || isAsistente) {
     menu.push(
       {
@@ -183,9 +232,6 @@ export const getSidebarNav = (userRoles = []) => {
     )
   }
 
-  // ==========================================
-  // SECCIÓN: PANTALLA DEL MÉDICO (Solo MEDICO)
-  // ==========================================
   if (isMedico) {
     menu.push(
       {
@@ -207,9 +253,6 @@ export const getSidebarNav = (userRoles = []) => {
     )
   }
 
-  // ==========================================
-  // SECCIÓN: ASISTENTE CLÍNICO (ASISTENTE u Opcional ADMIN)
-  // ==========================================
   if (isAsistente || isAdmin) {
     menu.push(
       {

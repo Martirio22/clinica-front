@@ -31,8 +31,14 @@ import DashboardAsistente from './views/system/asistenteClinico/DashboardAsisten
 import BandejaChats from './views/system/asistenteClinico/BandejaChats'
 import ChatEnVivo from './views/system/asistenteClinico/ChatEnVivo'
 import AutorizacionAtencionAsistente from './views/system/asistenteClinico/AutorizacionAtencionAsistente'
+import PacienteDelDia from './views/system/enfermero/PacienteDelDia'
+import LineasWhatsapp from './views/system/whatsappBot/LineasWhatsapp'
+import MenusBot from './views/system/whatsappBot/MenusBot'
+import OpcionesMenuBot from './views/system/whatsappBot/OpcionesMenuBot'
+import IntencionesIA from './views/system/whatsappBot/IntencionesIA'
+import EventosIA from './views/system/whatsappBot/EventosIA'
+import EstadosSesionChat from './views/system/whatsappBot/EstadosSesionChat'
 
-// Dashboard principal base
 const Dashboard = React.lazy(() => import('./views/dashboard/Dashboard'))
 
 /**
@@ -51,7 +57,6 @@ export const getAppRoutes = (userRoles = []) => {
     { path: '/', exact: true, name: 'Home' }
   ]
 
-  // Dashboard general accesible para cualquiera con un rol válido
   if (hasAnyRole) {
     allowedRoutes.push(
       
@@ -61,7 +66,6 @@ export const getAppRoutes = (userRoles = []) => {
     )
   }
 
-  // Rutas exclusivas de ADMINISTRADOR
   if (isAdmin) {
     allowedRoutes.push(
       { path: '/dashboard', name: 'Dashboard', element: Dashboard },
@@ -82,7 +86,6 @@ export const getAppRoutes = (userRoles = []) => {
     )
   }
 
-  // Rutas compartidas o específicas de la Agenda
   if (isAdmin || isMedico) {
     allowedRoutes.push(
       { path: '/agenda', name: 'Pantalla de Agenda', exact: true },
@@ -101,7 +104,6 @@ export const getAppRoutes = (userRoles = []) => {
     )
   }
 
-  // Rutas exclusivas de MÉDICO
   if (isMedico) {
     allowedRoutes.push(
       { path: '/medico', name: 'Pantalla del Médico', exact: true },
@@ -112,8 +114,26 @@ export const getAppRoutes = (userRoles = []) => {
       { path: '/medico/recetas-medicas', name: 'Recetas Médicas', element: RecetasMedicas }
     )
   }
+  
+  if (isEnfermero) {
+    allowedRoutes.push(
+      { path: '/enfermero', name: 'Pantalla Enfermero', exact: true },
+      { path: '/enfermero/paciente-del-dia', name: 'Paciente del Día', element: PacienteDelDia }
+    )
+  }
 
-  // Rutas exclusivas de ASISTENTE
+  if (isAdmin || isAsistente) {
+    allowedRoutes.push(
+      { path: '/whatsapp-bot', name: 'Pantallas de WhatsApp / Bot', exact: true },
+      { path: '/whatsapp-bot/lineas-whatsapp', name: 'Líneas WhatsApp', element: LineasWhatsapp },
+      { path: '/whatsapp-bot/menus-bot', name: 'Menús del Bot', element: MenusBot },
+      { path: '/whatsapp-bot/menus-bot/:menuId/opciones', name: 'Opciones del Menú', element: OpcionesMenuBot },
+      { path: '/whatsapp-bot/intenciones-ia', name: 'Intenciones IA', element: IntencionesIA },
+      { path: '/whatsapp-bot/eventos-ia', name: 'Eventos IA', element: EventosIA },
+      { path: '/whatsapp-bot/estados-sesion-chat', name: 'Estados Sesión Chat', element: EstadosSesionChat }
+    )
+  }
+
   if (isAsistente) {
     allowedRoutes.push(
       { path: '/asistente-clinico', name: 'Asistente Clínico', exact: true },
