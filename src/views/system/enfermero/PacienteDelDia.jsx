@@ -243,9 +243,9 @@ const PacienteDelDia = () => {
     })
   }, [citas, pacientes, medicos, especialidades, estados, busqueda])
 
-  const verPaciente = (cita) => {
-    navigate(`/pacientes/perfil-paciente/${cita.patientId}`)
-  }
+  // const verPaciente = (cita) => {
+  //   navigate(`/pacientes/perfil-paciente/${cita.patientId}`)
+  // }
 
   const verCita = (cita) => {
     setSelectedAppointment(cita)
@@ -393,7 +393,7 @@ const PacienteDelDia = () => {
                         <CTableDataCell>{cita.reason || '-'}</CTableDataCell>
 
                         <CTableDataCell className="text-end">
-                          <CButton
+                          {/* <CButton
                             color="secondary"
                             variant="outline"
                             size="sm"
@@ -401,7 +401,7 @@ const PacienteDelDia = () => {
                             onClick={() => verPaciente(cita)}
                           >
                             Ver paciente
-                          </CButton>
+                          </CButton> */}
 
                           <CButton
                             color="info"

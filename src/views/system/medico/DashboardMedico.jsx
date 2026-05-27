@@ -250,23 +250,24 @@ const DashboardMedico = () => {
     return 'secondary'
   }
 
-  const formatearHora = (value) => {
-    if (!value) return '-'
-    const raw = String(value)
-    if (raw.includes('T')) return raw.slice(11, 16)
-    if (raw.includes(' ')) return raw.slice(11, 16)
-    const date = new Date(value)
-    if (Number.isNaN(date.getTime())) return raw
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-  }
-
-  const formatearFechaHora = (value) => {
+ const formatearFechaHora = (value, soloHora = false) => {
     if (!value) return '-'
     const date = new Date(value)
-    if (Number.isNaN(date.getTime())) {
-      return String(value).replace('T', ' ')
+    if (Number.isNaN(date.getTime())) return '-'
+    const opciones = {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true 
     }
-    return date.toLocaleString()
+
+    if (soloHora) {
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })
+    }
+    
+    return date.toLocaleString('es-ES', opciones).replace(',', '')
   }
 
   const obtenerAtencionPorCita = (appointmentId) => {
@@ -313,8 +314,8 @@ const DashboardMedico = () => {
     })
   }, [citasHoy, estados])
 
-  const irMiCalendario = () => navigate('/agenda/calendario-citas')
-  const crearBloqueo = () => navigate('/agenda/bloqueo-agenda')
+  const irMiCalendario = () => navigate('/medico/mi-calendario')
+  const crearBloqueo = () => navigate(`/agenda/bloqueo-agenda?doctorId=${doctorId}`)
   const verPaciente = (cita) => navigate(`/pacientes/perfil-paciente/${cita.patientId}`)
 
   const abrirModalIniciarAtencion = (cita) => {
@@ -452,7 +453,7 @@ const DashboardMedico = () => {
                       citasPendientesHoy.map((cita, index) => (
                         <CTableRow key={cita.id}>
                           <CTableHeaderCell>{index + 1}</CTableHeaderCell>
-                          <CTableDataCell>{formatearHora(cita.startDate)}</CTableDataCell>
+                          <CTableDataCell>{formatearFechaHora(cita.startDate)}</CTableDataCell>
                           <CTableDataCell>
                             <div>{obtenerNombrePaciente(cita.patientId)}</div>
                             <small className="text-body-secondary">{obtenerPaciente(cita.patientId)?.identification || ''}</small>
@@ -503,7 +504,7 @@ const DashboardMedico = () => {
                     pacientesEnEspera.map((cita, index) => (
                       <CTableRow key={cita.id}>
                         <CTableHeaderCell>{index + 1}</CTableHeaderCell>
-                        <CTableDataCell>{formatearHora(cita.startDate)}</CTableDataCell>
+                        <CTableDataCell>{formatearFechaHora(cita.startDate)}</CTableDataCell>
                         <CTableDataCell>{obtenerNombrePaciente(cita.patientId)}</CTableDataCell>
                         <CTableDataCell>{obtenerNombreEspecialidad(cita.specialtyId)}</CTableDataCell>
                         <CTableDataCell>{cita.reason || '-'}</CTableDataCell>

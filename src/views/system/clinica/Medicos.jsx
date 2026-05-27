@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom';
 import {
   CAlert,
   CBadge,
@@ -29,6 +30,9 @@ import { doctorService } from '../../../services/doctorService'
 import { userService } from '../../../services/userService'
 import { specialtyService } from '../../../services/specialtyService'
 
+import { doctorScheduleService } from '../../../services/doctorScheduleService' 
+import { scheduleBlockService } from '../../../services/scheduleBlockService'
+
 const initialForm = {
   userId: '',
   specialtyId: '',
@@ -38,9 +42,13 @@ const initialForm = {
 }
 
 const Medicos = () => {
+  const navigate = useNavigate();
   const [medicos, setMedicos] = useState([])
   const [usuariosMedicos, setUsuariosMedicos] = useState([])
   const [especialidades, setEspecialidades] = useState([])
+
+  const [horariosModal, setHorariosModal] = useState({ visible: false, data: [], loading: false });
+  const [bloqueosModal, setBloqueosModal] = useState({ visible: false, data: [], loading: false });
 
   const [form, setForm] = useState(initialForm)
   const [editingDoctor, setEditingDoctor] = useState(null)
@@ -56,7 +64,6 @@ const Medicos = () => {
   const [modalError, setModalError] = useState('')
   const [success, setSuccess] = useState('')
 
-  // Estado del modal de confirmación dinámico unificado
   const [confirmModal, setConfirmModal] = useState({
     visible: false,
     title: '',
@@ -123,6 +130,40 @@ const Medicos = () => {
     cargarEspecialidades()
     cargarMedicos()
   }, [])
+
+  const abrirHorarios = async (doctor) => {
+    setHorariosModal({ visible: true, data: [], loading: true });
+    try {
+      // Cambiado de doctorService a doctorScheduleService
+      const data = await doctorScheduleService.listarPorDoctor(doctor.id); 
+      setHorariosModal({ visible: true, data: data || [], loading: false });
+    } catch (err) {
+      console.error(err);
+      setHorariosModal({ visible: false, data: [], loading: false });
+      setError('Error al cargar horarios.');
+    }
+  };
+
+  const abrirBloqueos = async (doctor) => {
+    // Agregamos doctorId al estado
+    setBloqueosModal({ visible: true, data: [], loading: true, doctorId: doctor.id }); 
+    try {
+      const data = await scheduleBlockService.listarPorDoctor(doctor.id); 
+      setBloqueosModal({ visible: true, data: data || [], loading: false, doctorId: doctor.id });
+    } catch (err) {
+      console.error(err);
+      setBloqueosModal({ visible: false, data: [], loading: false, doctorId: null });
+      setError('Error al cargar bloqueos.');
+    }
+  };
+
+  const configurarHorario = (doctor) => {
+    navigate(`/agenda/horarios-medicos?doctorId=${doctor.id}`);
+  };
+
+  const irACrearBloqueo = (doctorId) => {
+  navigate(`/agenda/bloqueo-agenda?doctorId=${doctorId}`);
+};
 
   const handleFiltroEspecialidad = async (e) => {
     const specialtyId = e.target.value
@@ -331,17 +372,22 @@ const Medicos = () => {
     setConfirmModal((prev) => ({ ...prev, visible: false }))
   }
 
-  const irHorarios = (doctor) => {
-    alert(`Aquí puedes redirigir a horarios del médico: ${doctor.id}`)
-  }
+  // //const irHorarios = (doctor) => {
+  //  // alert(`Aquí puedes redirigir a horarios del médico: ${doctor.id}`)
+  // }
 
-  const irBloqueos = (doctor) => {
-    alert(`Aquí puedes redirigir a bloqueos del médico: ${doctor.id}`)
-  }
+  // const irBloqueos = (doctor) => {
+  //   alert(`Aquí puedes redirigir a bloqueos del médico: ${doctor.id}`)
+  // }
 
-  const configurarHorario = (doctor) => {
-    alert(`Aquí puedes abrir la pantalla para configurar horario del médico: ${doctor.id}`)
-  }
+  // const configurarHorario = (doctor) => {
+  //   alert(`Aquí puedes abrir la pantalla para configurar horario del médico: ${doctor.id}`)
+  // }
+
+  const obtenerNombreDia = (day) => {
+  const dias = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+  return dias[day] || '-';
+};
 
   return (
     <>
@@ -441,56 +487,32 @@ const Medicos = () => {
                       </CTableDataCell>
 
                       <CTableDataCell className="text-end">
-                        <CButton
-                          color="info"
-                          variant="outline"
-                          size="sm"
-                          className="me-2 mb-1"
-                          onClick={() => irHorarios(doctor)}
-                        >
-                          Ver horarios
-                        </CButton>
-
-                        <CButton
-                          color="dark"
-                          variant="outline"
-                          size="sm"
-                          className="me-2 mb-1"
-                          onClick={() => irBloqueos(doctor)}
-                        >
-                          Ver bloqueos
-                        </CButton>
-
-                        <CButton
-                          color="primary"
-                          variant="outline"
-                          size="sm"
-                          className="me-2 mb-1"
-                          onClick={() => configurarHorario(doctor)}
-                        >
-                          Configurar horario
-                        </CButton>
-
-                        <CButton
-                          color="warning"
-                          variant="outline"
-                          size="sm"
-                          className="me-2 mb-1"
-                          onClick={() => abrirModalEditar(doctor)}
-                        >
-                          Editar
-                        </CButton>
-
-                        <CButton
-                          color={doctor.isActive ? 'danger' : 'success'}
-                          variant="outline"
-                          size="sm"
-                          className="mb-1"
-                          onClick={() => confirmarAlternarEstadoMedico(doctor)}
-                        >
-                          {doctor.isActive ? 'Inactivar' : 'Activar'}
-                        </CButton>
-                      </CTableDataCell>
+  <div className="d-flex flex-wrap justify-content-end gap-1">
+    {/* Acciones principales */}
+    <CButton color="info" variant="outline" size="sm" onClick={() => abrirHorarios(doctor)}>
+      Horarios
+    </CButton>
+    <CButton color="dark" variant="outline" size="sm" onClick={() => abrirBloqueos(doctor)}>
+      Bloqueos
+    </CButton>
+    <CButton color="primary" variant="outline" size="sm" onClick={() => configurarHorario(doctor)}>
+      Configurar Horario
+    </CButton>
+    
+    {/* Acciones de mantenimiento */}
+    <CButton color="warning" variant="outline" size="sm" onClick={() => abrirModalEditar(doctor)}>
+      Editar
+    </CButton>
+    <CButton 
+      color={doctor.isActive ? 'danger' : 'success'} 
+      variant="outline" 
+      size="sm" 
+      onClick={() => confirmarAlternarEstadoMedico(doctor)}
+    >
+      {doctor.isActive ? 'Inactivar' : 'Activar'}
+    </CButton>
+  </div>
+</CTableDataCell>
                     </CTableRow>
                   ))
                 )}
@@ -499,6 +521,91 @@ const Medicos = () => {
           )}
         </CCardBody>
       </CCard>
+
+      <CModal visible={horariosModal.visible} onClose={() => setHorariosModal(p => ({...p, visible: false}))} size="lg">
+  <CModalHeader><CModalTitle>Horarios del Médico</CModalTitle></CModalHeader>
+  <CModalBody>
+    {horariosModal.loading ? (
+      <div className="text-center"><CSpinner /></div>
+    ) : (
+      <CTable hover responsive>
+        <CTableHead>
+          <CTableRow>
+            <CTableHeaderCell>Día</CTableHeaderCell>
+            <CTableHeaderCell>Horario</CTableHeaderCell>
+            <CTableHeaderCell>Sucursal</CTableHeaderCell>
+            <CTableHeaderCell>Consultorio</CTableHeaderCell>
+          </CTableRow>
+        </CTableHead>
+        <CTableBody>
+          {horariosModal.data.map((item) => (
+            <CTableRow key={item.id}>
+              <CTableDataCell>{obtenerNombreDia(item.dayOfWeek)}</CTableDataCell>
+              <CTableDataCell>{item.startTime?.substring(0, 5)} - {item.endTime?.substring(0, 5)}</CTableDataCell>
+              <CTableDataCell>{item.branch?.name || '-'}</CTableDataCell>
+              <CTableDataCell>{item.office?.name || '-'}</CTableDataCell>
+            </CTableRow>
+          ))}
+          {horariosModal.data.length === 0 && (
+            <CTableRow><CTableDataCell colSpan={4} className="text-center">Sin horarios.</CTableDataCell></CTableRow>
+          )}
+        </CTableBody>
+      </CTable>
+    )}
+  </CModalBody>
+</CModal>
+
+      {/* MODAL BLOQUEOS */}
+<CModal visible={bloqueosModal.visible} onClose={() => setBloqueosModal(p => ({...p, visible: false}))} size="xl">
+  <CModalHeader>
+    <CModalTitle>Bloqueos del Médico</CModalTitle>
+    <CButton 
+      color="primary" 
+      size="sm" 
+      className="ms-3" 
+      onClick={() => irACrearBloqueo(bloqueosModal.doctorId)} 
+    >
+      Agregar Bloqueo
+    </CButton>
+  </CModalHeader>
+  <CModalBody>
+    {bloqueosModal.loading ? (
+      <div className="text-center py-4"><CSpinner /></div>
+    ) : (
+      <CTable hover responsive align="middle">
+        <CTableHead>
+          <CTableRow>
+            <CTableHeaderCell>Tipo</CTableHeaderCell>
+            <CTableHeaderCell>Fecha Inicio</CTableHeaderCell>
+            <CTableHeaderCell>Fecha Fin</CTableHeaderCell>
+            <CTableHeaderCell>Motivo / Descripción</CTableHeaderCell>
+          </CTableRow>
+        </CTableHead>
+        <CTableBody>
+          {bloqueosModal.data.map((item) => (
+            <CTableRow key={item.id}>
+              <CTableDataCell>
+                <CBadge color="info">{item.blockingType?.name || 'N/A'}</CBadge>
+              </CTableDataCell>
+              <CTableDataCell>{new Date(item.startDate).toLocaleString()}</CTableDataCell>
+              <CTableDataCell>{new Date(item.endDate).toLocaleString()}</CTableDataCell>
+              <CTableDataCell>
+                <div>{item.reason}</div>
+                <small className="text-body-secondary">{item.blockingType?.description}</small>
+              </CTableDataCell>
+            </CTableRow>
+          ))}
+          {bloqueosModal.data.length === 0 && (
+            <CTableRow>
+              <CTableDataCell colSpan={5} className="text-center">No hay bloqueos registrados.</CTableDataCell>
+            </CTableRow>
+          )}
+        </CTableBody>
+      </CTable>
+    )}
+  </CModalBody>
+</CModal>
+
 
       {/* MODAL FORMULARIO */}
       <CModal visible={visible} onClose={cerrarModal} backdrop="static" size="lg">

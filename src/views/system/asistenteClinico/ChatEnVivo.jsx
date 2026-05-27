@@ -58,6 +58,7 @@ const initialAppointmentForm = {
   branchId: '',
   officeId: '',
   reason: '',
+  observation: '',
 }
 
 const initialCloseForm = {
@@ -940,7 +941,7 @@ const ChatEnVivo = () => {
                       <p>
                         <strong>Email:</strong> {selectedPatient.email || '-'}
                       </p>
-
+{/* 
                       <CButton
                         color="secondary"
                         variant="outline"
@@ -948,7 +949,7 @@ const ChatEnVivo = () => {
                         onClick={verPaciente}
                       >
                         Ver paciente
-                      </CButton>
+                      </CButton> */}
                     </>
                   ) : (
                     <>
@@ -1184,6 +1185,21 @@ const ChatEnVivo = () => {
                 placeholder="Ej: Consulta de control"
               />
             </CCol>
+
+            <CCol md={12}>
+  <CFormLabel>Observaciones adicionales (Opcional)</CFormLabel>
+  <CFormTextarea
+    name="observation"
+    value={appointmentForm.observation || ''}
+    onChange={handleAppointmentChange}
+    rows={3}
+    maxLength={500}
+    placeholder="Ej: El paciente requiere asistencia en silla de ruedas / Traer exámenes previos"
+  />
+  <div className="text-end text-muted small">
+    {appointmentForm.observation?.length || 0}/500 caracteres
+  </div>
+</CCol>
 
             <CCol md={12}>
               <strong>Horarios disponibles</strong>

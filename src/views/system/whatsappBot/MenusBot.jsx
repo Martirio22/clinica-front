@@ -341,7 +341,7 @@ const MenusBot = () => {
                         <CButton color="primary" variant="outline" size="sm" className="me-2 mb-1" onClick={() => configurarOpciones(menu)}>Configurar opciones</CButton>
                         <CButton color="success" variant="outline" size="sm" className="me-2 mb-1" disabled={menu.isMainMenu === true} onClick={() => definirPrincipal(menu)}>Definir principal</CButton>
                         <CButton color={menu.isActive === false ? 'success' : 'danger'} variant="outline" size="sm" className="me-2 mb-1" onClick={() => cambiarEstado(menu)}>{menu.isActive === false ? 'Activar' : 'Inactivar'}</CButton>
-                        <CButton color="danger" variant="outline" size="sm" className="mb-1" onClick={() => eliminarMenu(menu)}>Eliminar</CButton>
+                        {/* <CButton color="danger" variant="outline" size="sm" className="mb-1" onClick={() => eliminarMenu(menu)}>Eliminar</CButton> */}
                       </CTableDataCell>
                     </CTableRow>
                   ))

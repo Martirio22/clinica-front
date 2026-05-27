@@ -344,9 +344,9 @@ const AutorizacionAtencionAsistente = () => {
     }
   }
 
-  const verPaciente = (cita) => {
-    navigate(`/pacientes/perfil-paciente/${cita.patientId}`)
-  }
+  // const verPaciente = (cita) => {
+  //   navigate(`/pacientes/perfil-paciente/${cita.patientId}`)
+  // }
 
   const verCita = (cita) => {
     setSelectedAppointment(cita)
@@ -480,7 +480,7 @@ const AutorizacionAtencionAsistente = () => {
                           Ver cita
                         </CButton>
 
-                        <CButton
+                        {/* <CButton
                           color="secondary"
                           variant="outline"
                           size="sm"
@@ -488,7 +488,7 @@ const AutorizacionAtencionAsistente = () => {
                           onClick={() => verPaciente(cita)}
                         >
                           Ver paciente
-                        </CButton>
+                        </CButton> */}
 
                         <CButton
                           color="warning"

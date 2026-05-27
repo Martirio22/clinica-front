@@ -357,21 +357,21 @@ const RecetasMedicas = () => {
     }
   }
 
-  const abrirModalAgregarMedicamento = (prescription) => {
-    const currentDetails = obtenerDetallesPorReceta(prescription.id)
+const abrirModalAgregarMedicamento = (prescription) => {
+  const currentDetails = obtenerDetallesPorReceta(prescription.id);
 
-    setSelectedPrescription(prescription)
-    setEditingDetail(null)
+  setSelectedPrescription(prescription);
+  setEditingDetail(null);
 
-    setDetailForm({
-      ...initialDetailForm,
-      medicalPrescriptionId: prescription.id,
-      order: currentDetails.length + 1,
-    })
+  setDetailForm({
+    ...initialDetailForm,
+    medicalPrescriptionId: prescription.id,
+    order: currentDetails.length + 1,
+  });
 
-    setModalError('')
-    setVisibleDetail(true)
-  }
+  setModalError('');
+  setVisibleDetail(true);
+}
 
   const abrirModalEditarMedicamento = (prescription, detail) => {
     setSelectedPrescription(prescription)
@@ -391,13 +391,12 @@ const RecetasMedicas = () => {
     setVisibleDetail(true)
   }
 
-  const cerrarModalDetalle = () => {
-    setVisibleDetail(false)
-    setSelectedPrescription(null)
-    setEditingDetail(null)
-    setDetailForm(initialDetailForm)
-    setModalError('')
-  }
+ const cerrarModalDetalle = () => {
+  setVisibleDetail(false);
+  setEditingDetail(null);
+  setDetailForm(initialDetailForm);
+  setModalError('');
+}
 
   const handleDetailChange = (e) => {
     const { name, value } = e.target
@@ -480,34 +479,6 @@ const RecetasMedicas = () => {
         } catch (err) {
           console.error(err)
           setError(err?.data?.message || err?.message || 'No se pudo eliminar el medicamento.')
-        } finally {
-          setLoading(false)
-        }
-      },
-    })
-  }
-
-  const enviarPorWhatsapp = async (prescription) => {
-    const paciente = obtenerNombrePacientePorReceta(prescription)
-    abrirConfirmacion({
-      title: 'Enviar por WhatsApp',
-      variant: 'info',
-      message: `¿Deseas enviar esta receta por WhatsApp${paciente && paciente !== '-' ? ` al paciente "${paciente}"` : ''}?`,
-      confirmText: 'Sí, enviar',
-      cancelText: 'No, todavía no',
-      onConfirm: async () => {
-        try {
-          setLoading(true)
-          setError('')
-          setSuccess('')
-
-          await medicalPrescriptionService.enviarWhatsapp(prescription.id)
-
-          setSuccess('Receta enviada por WhatsApp correctamente.')
-          await cargarRecetas()
-        } catch (err) {
-          console.error(err)
-          setError(err?.data?.message || err?.message || 'No se pudo enviar la receta por WhatsApp.')
         } finally {
           setLoading(false)
         }
@@ -619,7 +590,6 @@ const RecetasMedicas = () => {
                   <CTableHeaderCell>Atención</CTableHeaderCell>
                   <CTableHeaderCell>Indicaciones generales</CTableHeaderCell>
                   <CTableHeaderCell>Medicamentos</CTableHeaderCell>
-                  <CTableHeaderCell>Envío</CTableHeaderCell>
                   <CTableHeaderCell className="text-end">Acciones</CTableHeaderCell>
                 </CTableRow>
               </CTableHead>
@@ -648,14 +618,6 @@ const RecetasMedicas = () => {
 
                         <CTableDataCell>
                           <CBadge color="info">{prescriptionDetails.length}</CBadge>
-                        </CTableDataCell>
-
-                        <CTableDataCell>
-                          {estaEnviada(prescription) ? (
-                            <CBadge color="success">Enviada</CBadge>
-                          ) : (
-                            <CBadge color="secondary">Pendiente</CBadge>
-                          )}
                         </CTableDataCell>
 
                         <CTableDataCell className="text-end">
@@ -687,16 +649,6 @@ const RecetasMedicas = () => {
                             onClick={() => abrirModalAgregarMedicamento(prescription)}
                           >
                             Agregar medicamento
-                          </CButton>
-
-                          <CButton
-                            color="success"
-                            variant="outline"
-                            size="sm"
-                            className="me-2 mb-1"
-                            onClick={() => enviarPorWhatsapp(prescription)}
-                          >
-                            Enviar WhatsApp
                           </CButton>
 
                           <CButton
@@ -969,9 +921,6 @@ const RecetasMedicas = () => {
                 Agregar medicamento
               </CButton>
 
-              <CButton color="success" onClick={() => enviarPorWhatsapp(selectedPrescription)}>
-                Enviar por WhatsApp
-              </CButton>
             </>
           )}
         </CModalFooter>

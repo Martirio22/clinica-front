@@ -27,6 +27,11 @@ import {
 } from '@coreui/react'
 
 import { patientService } from '../../../services/patientService'
+import { appointmentService } from '../../../services/appointmentService'
+import { medicalAttentionService } from '../../../services/medicalAttentionService'
+import { medicalPrescriptionService } from '../../../services/medicalPrescriptionService'
+import { chatSessionService } from '../../../services/chatSessionService'
+import { chatMessageService } from '../../../services/chatMessageService'
 
 const initialForm = {
   identificationType: 'CEDULA',
@@ -42,9 +47,30 @@ const initialForm = {
 }
 
 const Pacientes = () => {
+
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+const roles = user.roles || []; // Aseguramos que sea un array
+const esMedico = roles.includes('MEDICO');
+const esAdminOAsistente = roles.includes('ADMIN') || roles.includes('ASISTENTE');
+
   const [pacientes, setPacientes] = useState([])
   const [form, setForm] = useState(initialForm)
   const [editingPatient, setEditingPatient] = useState(null)
+
+  const [patientAppointments, setPatientAppointments] = useState([])
+const [visibleAppointmentsModal, setVisibleAppointmentsModal] = useState(false)
+const [selectedPatientName, setSelectedPatientName] = useState('')
+
+const [patientAttentions, setPatientAttentions] = useState([])
+const [visibleAttentionsModal, setVisibleAttentionsModal] = useState(false)
+
+const [patientPrescriptions, setPatientPrescriptions] = useState([]);
+const [visiblePrescriptionsModal, setVisiblePrescriptionsModal] = useState(false);
+
+const [patientSessions, setPatientSessions] = useState([]);
+const [visibleSessionsModal, setVisibleSessionsModal] = useState(false);
+
+const [visibleNoSessionModal, setVisibleNoSessionModal] = useState(false);
 
   const [searchNombre, setSearchNombre] = useState('')
   const [searchIdentificacion, setSearchIdentificacion] = useState('')
@@ -282,21 +308,92 @@ const Pacientes = () => {
     navigate(`/pacientes/perfil-paciente/${patient.id}`)
   }
 
-  const verCitas = (patient) => {
-    alert(`Aquí puedes redirigir a las citas del paciente: ${patient.id}`)
+  const verCitas = async (patient) => {
+  try {
+    setLoading(true)
+    setError('')
+    setSelectedPatientName(`${patient.firstName} ${patient.lastName}`)
+    
+    const data = await appointmentService.listarConFiltros({
+      patientId: patient.id,
+    })
+    setPatientAppointments(data || [])
+    setVisibleAppointmentsModal(true)
+  } catch (err) {
+    console.error(err)
+    setError('No se pudieron cargar las citas del paciente.')
+  } finally {
+    setLoading(false)
   }
+}
 
-  const verAtenciones = (patient) => {
-    alert(`Aquí puedes redirigir a las atenciones médicas del paciente: ${patient.id}`)
-  }
+  const verAtenciones = async (patient) => {
+  try {
+    setLoading(true);
+    setError('');
+    
+    // Obtenemos todas y filtramos
+    const data = await medicalAttentionService.listar();
+    const atencionesDelPaciente = data.filter(a => a.patientId === patient.id);
 
-  const verRecetas = (patient) => {
-    alert(`Aquí puedes redirigir a las recetas del paciente: ${patient.id}`)
+    setSelectedPatientName(`${patient.firstName} ${patient.lastName}`);
+    setPatientAttentions(atencionesDelPaciente); // Guardamos los datos
+    setVisibleAttentionsModal(true);             // Abrimos el modal
+    
+  } catch (err) {
+    console.error("Error al cargar atenciones:", err);
+    setError('No se pudieron cargar las atenciones médicas.');
+  } finally {
+    setLoading(false);
   }
+}
 
-  const verSesionesChat = (patient) => {
-    alert(`Aquí puedes redirigir a las sesiones de chat del paciente: ${patient.id}`)
+ const verRecetas = async (patient) => {
+  try {
+    setLoading(true);
+    const data = await medicalPrescriptionService.listar();
+    
+    // CORRECCIÓN AQUÍ: Accedemos a medicalAttention.patient.id o medicalAttention.patientId
+    const recetasDelPaciente = data.filter(r => {
+      // Usamos encadenamiento opcional (?.) por seguridad
+      const patientIdInRecipe = r.medicalAttention?.patientId;
+      return patientIdInRecipe === patient.id;
+    });
+
+    console.log("Recetas filtradas:", recetasDelPaciente);
+
+    setSelectedPatientName(`${patient.firstName} ${patient.lastName}`);
+    setPatientPrescriptions(recetasDelPaciente);
+    setVisiblePrescriptionsModal(true);
+  } catch (err) {
+    console.error("Error al cargar recetas:", err);
+  } finally {
+    setLoading(false);
   }
+};
+
+  const verSesionesChat = async (patient) => {
+  try {
+    setLoading(true);
+    const data = await chatSessionService.listar();
+    const sesionesDelPaciente = data.filter(s => s.patientId === patient.id);
+    
+    if (sesionesDelPaciente.length > 0) {
+      const sesionMasReciente = sesionesDelPaciente.sort((a, b) => 
+        new Date(b.createdAt) - new Date(a.createdAt)
+      )[0];
+      
+      window.location.hash = `#/asistente-clinico/chat-en-vivo/${sesionMasReciente.id}`;
+    } else {
+      // En lugar de alert, abrimos el modal
+      setVisibleNoSessionModal(true);
+    }
+  } catch (err) {
+    console.error("Error al cargar sesiones:", err);
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <>
@@ -421,76 +518,50 @@ const Pacientes = () => {
                       </CTableDataCell>
 
                       <CTableDataCell className="text-end">
-                        <CButton
-                          color="info"
-                          variant="outline"
-                          size="sm"
-                          className="me-2 mb-1"
-                          onClick={() => verPerfil(patient)}
-                        >
-                          Perfil
-                        </CButton>
+  <div className="d-flex flex-wrap justify-content-end gap-1">
+    
+    {/* VISIBLES SOLO PARA MÉDICO */}
+{esMedico && (
+  <>
+    <CButton color="info" variant="outline" size="sm" onClick={() => verPerfil(patient)}>
+      Perfil
+    </CButton>
+    <CButton color="secondary" variant="outline" size="sm" onClick={() => verRecetas(patient)}>
+      Recetas
+    </CButton>
+    <CButton color="dark" variant="outline" size="sm" onClick={() => verAtenciones(patient)}>
+      Atenciones
+    </CButton>
+  </>
+)}
 
-                        <CButton
-                          color="primary"
-                          variant="outline"
-                          size="sm"
-                          className="me-2 mb-1"
-                          onClick={() => verCitas(patient)}
-                        >
-                          Citas
-                        </CButton>
+{/* VISIBLES PARA TODOS */}
+<CButton color="primary" variant="outline" size="sm" onClick={() => verCitas(patient)}>
+  Citas
+</CButton>
 
-                        <CButton
-                          color="dark"
-                          variant="outline"
-                          size="sm"
-                          className="me-2 mb-1"
-                          onClick={() => verAtenciones(patient)}
-                        >
-                          Atenciones
-                        </CButton>
-
-                        <CButton
-                          color="secondary"
-                          variant="outline"
-                          size="sm"
-                          className="me-2 mb-1"
-                          onClick={() => verRecetas(patient)}
-                        >
-                          Recetas
-                        </CButton>
-
-                        <CButton
-                          color="success"
-                          variant="outline"
-                          size="sm"
-                          className="me-2 mb-1"
-                          onClick={() => verSesionesChat(patient)}
-                        >
-                          Chat
-                        </CButton>
-
-                        <CButton
-                          color="warning"
-                          variant="outline"
-                          size="sm"
-                          className="me-2 mb-1"
-                          onClick={() => abrirModalEditar(patient)}
-                        >
-                          Editar
-                        </CButton>
-
-                        <CButton
-                          color={patient.isActive ? 'danger' : 'success'}
-                          variant="outline"
-                          size="sm"
-                          className="mb-1"
-                          onClick={() => confirmarAlternarEstadoPaciente(patient)}
-                        >
-                          {patient.isActive ? 'Inactivar' : 'Activar'}
-                        </CButton>
-                      </CTableDataCell>
+{/* VISIBLE SOLO PARA ADMIN Y ASISTENTE */}
+{esAdminOAsistente && (
+  <CButton color="primary" variant="outline" size="sm" onClick={() => verSesionesChat(patient)}>
+    Chat
+  </CButton>
+)}
+    
+    
+    {/* Botones administrativos siempre visibles (o ajusta el rol aquí también) */}
+    <CButton color="warning" variant="outline" size="sm" onClick={() => abrirModalEditar(patient)}>
+      Editar
+    </CButton>
+    <CButton 
+      color={patient.isActive ? 'danger' : 'success'} 
+      variant="outline" 
+      size="sm" 
+      onClick={() => confirmarAlternarEstadoPaciente(patient)}
+    >
+      {patient.isActive ? 'Inactivar' : 'Activar'}
+    </CButton>
+  </div>
+</CTableDataCell>
                     </CTableRow>
                   ))
                 )}
@@ -635,6 +706,186 @@ const Pacientes = () => {
           </CButton>
         </CModalFooter>
       </CModal>
+
+      <CModal visible={visibleAppointmentsModal} onClose={() => setVisibleAppointmentsModal(false)} size="xl">
+  <CModalHeader>
+    <CModalTitle>Historial de citas: {selectedPatientName}</CModalTitle>
+  </CModalHeader>
+  <CModalBody>
+    <CTable hover responsive align="middle">
+      <CTableHead color="light">
+        <CTableRow>
+          <CTableHeaderCell>Fecha y Hora</CTableHeaderCell>
+          <CTableHeaderCell>Especialidad</CTableHeaderCell>
+          <CTableHeaderCell>Médico</CTableHeaderCell>
+          <CTableHeaderCell>Motivo</CTableHeaderCell>
+          <CTableHeaderCell>Estado</CTableHeaderCell>
+        </CTableRow>
+      </CTableHead>
+      <CTableBody>
+        {Array.isArray(patientAppointments) && patientAppointments.length > 0 ? (
+          patientAppointments.map((cita) => (
+            <CTableRow key={cita.id}>
+              <CTableDataCell>
+                {new Date(cita.startDate).toLocaleDateString('es-EC', {
+                  day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+                })}
+              </CTableDataCell>
+              <CTableDataCell>
+                <strong>{cita.specialty?.name || 'N/A'}</strong>
+                <div className="small text-body-secondary">Consultorio: {cita.office?.name || 'No asignado'}</div>
+              </CTableDataCell>
+              <CTableDataCell>
+                {cita.doctor?.user 
+                  ? `Dr(a). ${cita.doctor.user.firstName} ${cita.doctor.user.lastName}` 
+                  : 'No asignado'}
+              </CTableDataCell>
+              <CTableDataCell className="text-truncate" style={{ maxWidth: '150px' }}>
+                {cita.reason || '-'}
+              </CTableDataCell>
+              <CTableDataCell>
+                <CBadge color={cita.status?.code === 'CONFIRMED' ? 'success' : 'info'}>
+                  {cita.status?.name || 'Sin estado'}
+                </CBadge>
+              </CTableDataCell>
+            </CTableRow>
+          ))
+        ) : (
+          <CTableRow>
+            <CTableDataCell colSpan={5} className="text-center">No tiene citas registradas.</CTableDataCell>
+          </CTableRow>
+        )}
+      </CTableBody>
+    </CTable>
+  </CModalBody>
+  <CModalFooter>
+    <CButton color="secondary" onClick={() => setVisibleAppointmentsModal(false)}>Cerrar</CButton>
+  </CModalFooter>
+</CModal>
+
+<CModal visible={visibleAttentionsModal} onClose={() => setVisibleAttentionsModal(false)} size="xl">
+  <CModalHeader>
+    <CModalTitle>Historial de Atenciones: {selectedPatientName}</CModalTitle>
+  </CModalHeader>
+  <CModalBody>
+    <CTable hover responsive align="middle">
+      <CTableHead color="light">
+        <CTableRow>
+          <CTableHeaderCell>Fecha</CTableHeaderCell>
+          <CTableHeaderCell>Motivo / Síntomas</CTableHeaderCell>
+          <CTableHeaderCell>Diagnóstico</CTableHeaderCell>
+          <CTableHeaderCell>Indicaciones</CTableHeaderCell>
+          <CTableHeaderCell>Estado</CTableHeaderCell>
+        </CTableRow>
+      </CTableHead>
+      <CTableBody>
+        {Array.isArray(patientAttentions) && patientAttentions.length > 0 ? (
+          patientAttentions.map((atencion) => (
+            <CTableRow key={atencion.id}>
+              <CTableDataCell>
+                {new Date(atencion.startDate).toLocaleDateString('es-EC', {
+                  day: '2-digit', month: '2-digit', year: 'numeric'
+                })}
+              </CTableDataCell>
+              <CTableDataCell>
+                <strong>{atencion.reasonConsultation}</strong>
+                <div className="small text-body-secondary">Sint: {atencion.symptoms}</div>
+              </CTableDataCell>
+              <CTableDataCell>{atencion.diagnosis || '-'}</CTableDataCell>
+              <CTableDataCell>{atencion.indications || '-'}</CTableDataCell>
+              <CTableDataCell>
+                <CBadge color={atencion.status?.code === 'FINALIZADO' ? 'success' : 'warning'}>
+                  {atencion.status?.name || 'Proceso'}
+                </CBadge>
+              </CTableDataCell>
+            </CTableRow>
+          ))
+        ) : (
+          <CTableRow>
+            <CTableDataCell colSpan={5} className="text-center">No tiene atenciones registradas.</CTableDataCell>
+          </CTableRow>
+        )}
+      </CTableBody>
+    </CTable>
+  </CModalBody>
+  <CModalFooter>
+    <CButton color="secondary" onClick={() => setVisibleAttentionsModal(false)}>Cerrar</CButton>
+  </CModalFooter>
+</CModal>
+
+<CModal visible={visiblePrescriptionsModal} onClose={() => setVisiblePrescriptionsModal(false)} size="xl">
+  <CModalHeader>
+    <CModalTitle>Recetas Médicas: {selectedPatientName}</CModalTitle>
+  </CModalHeader>
+  <CModalBody>
+    <CTable hover responsive align="middle">
+      <CTableHead color="light">
+        <CTableRow>
+          <CTableHeaderCell>Código / Fecha</CTableHeaderCell>
+          <CTableHeaderCell>Medicamentos</CTableHeaderCell>
+          <CTableHeaderCell>Indicaciones Generales</CTableHeaderCell>
+        </CTableRow>
+      </CTableHead>
+      <CTableBody>
+        {Array.isArray(patientPrescriptions) && patientPrescriptions.length > 0 ? (
+          patientPrescriptions.map((receta) => (
+            <CTableRow key={receta.id}>
+              <CTableDataCell>
+                <strong>{receta.prescriptionCode}</strong>
+                <div className="small text-body-secondary">
+                  {new Date(receta.issueDate).toLocaleDateString()}
+                </div>
+              </CTableDataCell>
+              <CTableDataCell>
+                <ul className="list-unstyled mb-0">
+                  {receta.items?.map((item, index) => (
+                    <li key={index} className="small">
+                      • <strong>{item.medicine}</strong>: {item.dose} ({item.frequency})
+                    </li>
+                  ))}
+                </ul>
+              </CTableDataCell>
+              <CTableDataCell style={{ maxWidth: '200px' }}>
+                {receta.generalIndications || '-'}
+              </CTableDataCell>
+            </CTableRow>
+          ))
+        ) : (
+          <CTableRow>
+            <CTableDataCell colSpan={5} className="text-center">No hay recetas registradas.</CTableDataCell>
+          </CTableRow>
+        )}
+      </CTableBody>
+    </CTable>
+  </CModalBody>
+  <CModalFooter>
+    <CButton color="secondary" onClick={() => setVisiblePrescriptionsModal(false)}>Cerrar</CButton>
+  </CModalFooter>
+</CModal>
+
+<CModal visible={visibleNoSessionModal} onClose={() => setVisibleNoSessionModal(false)}>
+  <CModalHeader>
+    <CModalTitle>Sin sesiones activas</CModalTitle>
+  </CModalHeader>
+  <CModalBody>
+    <p>El paciente seleccionado aún no tiene ninguna sesión de chat iniciada.</p>
+  </CModalBody>
+  <CModalFooter>
+    <CButton color="secondary" onClick={() => setVisibleNoSessionModal(false)}>
+      Cerrar
+    </CButton>
+    <CButton 
+      color="primary" 
+      onClick={async () => {
+        // Opcional: Crear sesión aquí si tu API lo permite
+        // await chatSessionService.crear({ patientId: selectedPatient.id });
+        setVisibleNoSessionModal(false);
+      }}
+    >
+      Entendido
+    </CButton>
+  </CModalFooter>
+</CModal>
 
       {/* MODAL DE CONFIRMACIÓN DINÁMICO UNIFICADO */}
       <CModal visible={confirmModal.visible} onClose={cerrarConfirmModal} backdrop="static">

@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom';
 import {
   CAlert,
   CBadge,
@@ -51,6 +52,11 @@ const diasSemana = [
 ]
 
 const HorariosMedicos = () => {
+  const [searchParams] = useSearchParams();
+
+  const [filtroDoctorId, setFiltroDoctorId] = useState(searchParams.get('doctorId') || '');
+  const [filtroBranchId, setFiltroBranchId] = useState('');
+
   const [horarios, setHorarios] = useState([])
   const [medicos, setMedicos] = useState([])
   const [sucursales, setSucursales] = useState([])
@@ -59,8 +65,6 @@ const HorariosMedicos = () => {
   const [form, setForm] = useState(initialForm)
   const [editingSchedule, setEditingSchedule] = useState(null)
 
-  const [filtroDoctorId, setFiltroDoctorId] = useState('')
-  const [filtroBranchId, setFiltroBranchId] = useState('')
 
   const [visible, setVisible] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -142,7 +146,6 @@ const HorariosMedicos = () => {
     return horarios.filter((horario) => {
       const cumpleDoctor = !filtroDoctorId || horario.doctorId === filtroDoctorId
       const cumpleSucursal = !filtroBranchId || horario.branchId === filtroBranchId
-
       return cumpleDoctor && cumpleSucursal
     })
   }, [horarios, filtroDoctorId, filtroBranchId])

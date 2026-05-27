@@ -286,7 +286,7 @@ const EstadosSesionChat = () => {
                       <CTableDataCell className="text-end">
                         <CButton color="warning" variant="outline" size="sm" className="me-2 mb-1" onClick={() => abrirEditar(status)}>Editar</CButton>
                         <CButton color={status.isActive === false ? 'success' : 'danger'} variant="outline" size="sm" className="me-2 mb-1" onClick={() => cambiarEstado(status)}>{status.isActive === false ? 'Activar' : 'Inactivar'}</CButton>
-                        <CButton color="danger" variant="outline" size="sm" className="mb-1" onClick={() => eliminarEstado(status)}>Eliminar</CButton>
+                        {/* <CButton color="danger" variant="outline" size="sm" className="mb-1" onClick={() => eliminarEstado(status)}>Eliminar</CButton> */}
                       </CTableDataCell>
                     </CTableRow>
                   ))

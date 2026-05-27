@@ -523,7 +523,7 @@ const AutorizacionAtencion = () => {
                           Ver cita
                         </CButton>
 
-                        <CButton
+                        {/* <CButton
                           color="secondary"
                           variant="outline"
                           size="sm"
@@ -531,7 +531,7 @@ const AutorizacionAtencion = () => {
                           onClick={() => verPaciente(cita)}
                         >
                           Ver paciente
-                        </CButton>
+                        </CButton> */}
 
                         <CButton
                           color="warning"

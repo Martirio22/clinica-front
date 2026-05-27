@@ -291,7 +291,7 @@ const IntencionesIA = () => {
                         <CButton color="warning" variant="outline" size="sm" className="me-2 mb-1" onClick={() => abrirEditar(intent)}>Editar</CButton>
                         <CButton color="info" variant="outline" size="sm" className="me-2 mb-1" onClick={() => verEventosIA(intent)}>Ver eventos IA</CButton>
                         <CButton color={intent.isActive === false ? 'success' : 'danger'} variant="outline" size="sm" className="me-2 mb-1" onClick={() => cambiarEstado(intent)}>{intent.isActive === false ? 'Activar' : 'Inactivar'}</CButton>
-                        <CButton color="danger" variant="outline" size="sm" className="mb-1" onClick={() => eliminarIntencion(intent)}>Eliminar</CButton>
+                        {/* <CButton color="danger" variant="outline" size="sm" className="mb-1" onClick={() => eliminarIntencion(intent)}>Eliminar</CButton> */}
                       </CTableDataCell>
                     </CTableRow>
                   ))

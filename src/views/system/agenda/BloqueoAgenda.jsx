@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom';
 import {
   CAlert,
   CBadge,
@@ -41,6 +42,10 @@ const initialForm = {
 }
 
 const BloqueoAgenda = () => {
+
+  const [searchParams] = useSearchParams();
+  const doctorIdFromUrl = searchParams.get('doctorId');
+  
   const [bloqueos, setBloqueos] = useState([])
   const [medicos, setMedicos] = useState([])
   const [tiposBloqueo, setTiposBloqueo] = useState([])
@@ -79,6 +84,10 @@ const BloqueoAgenda = () => {
     try {
       const data = await doctorService.listar()
       setMedicos(data || [])
+      
+      if (doctorIdFromUrl) {
+        setFiltroDoctorId(doctorIdFromUrl)
+      }
     } catch (err) {
       console.error(err)
       setError('No se pudieron cargar los médicos.')
@@ -203,7 +212,7 @@ const BloqueoAgenda = () => {
     setEditingBlock(null)
     setForm({
       ...initialForm,
-      doctorId: filtroDoctorId || '',
+      doctorId: filtroDoctorId || '', 
       blockingTypeId: filtroTipoBloqueoId || '',
     })
     setError('')
@@ -539,17 +548,21 @@ const BloqueoAgenda = () => {
 
           <CRow className="g-3">
             <CCol md={6}>
-              <CFormLabel>Médico</CFormLabel>
-              <CFormSelect name="doctorId" value={form.doctorId || ''} onChange={handleChange}>
-                <option value="">Seleccione un médico</option>
-
-                {medicos.map((doctor) => (
-                  <option key={doctor.id} value={doctor.id}>
-                    {obtenerNombreMedico(doctor.id)}
-                  </option>
-                ))}
-              </CFormSelect>
-            </CCol>
+  <CFormLabel>Médico</CFormLabel>
+  <CFormSelect 
+    name="doctorId" 
+    value={form.doctorId || ''} 
+    onChange={handleChange}
+    disabled={!!doctorIdFromUrl} 
+  >
+    <option value="">Seleccione un médico</option>
+    {medicos.map((doctor) => (
+      <option key={doctor.id} value={doctor.id}>
+        {obtenerNombreMedico(doctor.id)}
+      </option>
+    ))}
+  </CFormSelect>
+</CCol>
 
             <CCol md={6}>
               <CFormLabel>Tipo de bloqueo</CFormLabel>

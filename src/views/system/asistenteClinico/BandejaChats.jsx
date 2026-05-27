@@ -450,7 +450,7 @@ const BandejaChats = () => {
                           >
                             Abrir chat
                           </CButton>
-
+{/* 
                           <CButton
                             size="sm"
                             color="secondary"
@@ -458,7 +458,7 @@ const BandejaChats = () => {
                             onClick={() => verPaciente(chat)}
                           >
                             Ver paciente
-                          </CButton>
+                          </CButton> */}
                         </div>
                       </CTableDataCell>
                     </CTableRow>
@@ -537,11 +537,11 @@ const BandejaChats = () => {
             </CButton>
           )}
 
-          {chatSeleccionado?.patientId && (
+          {/* {chatSeleccionado?.patientId && (
             <CButton color="secondary" variant="outline" onClick={() => verPaciente(chatSeleccionado)}>
               Ver paciente
             </CButton>
-          )}
+          )} */}
 
           <CButton color="primary" onClick={() => setModalChat(false)}>
             Cerrar
