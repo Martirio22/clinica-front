@@ -292,46 +292,50 @@ const AtencionMedica = () => {
   }
 
   const finalizarAtencion = async () => {
-    if (!atencionActual) {
-      setError('Primero debes iniciar la atención')
-      return
-    }
-
-    try {
-      setSaving(true)
-      setError(null)
-      setMensaje(null)
-
-      const data = await medicalAttentionService.finalizar(atencionActual.id, {
-        symptoms: formAtencion.symptoms,
-        diagnosis: formAtencion.diagnosis,
-        indications: formAtencion.indications,
-        observations: formAtencion.observations,
-      })
-
-      setAtencionActual(data)
-
-      const estadoAtendida = obtenerEstadoCitaAtendida()
-
-      if (estadoAtendida && cita?.id) {
-        await appointmentService.actualizar(cita.id, {
-          statusId: estadoAtendida.id,
-        })
-      }
-
-      if (storageKey) {
-        localStorage.removeItem(storageKey)
-      }
-
-      setMensaje('Atención finalizada correctamente')
-      await cargarDatos()
-    } catch (err) {
-      console.error(err)
-      setError(err.message || 'No se pudo finalizar la atención')
-    } finally {
-      setSaving(false)
-    }
+  if (!atencionActual) {
+    setError('Primero debes iniciar la atención')
+    return
   }
+
+  try {
+    setSaving(true)
+    setError(null)
+    setMensaje(null)
+
+    const data = await medicalAttentionService.finalizar(atencionActual.id, {
+      symptoms: formAtencion.symptoms,
+      diagnosis: formAtencion.diagnosis,
+      indications: formAtencion.indications,
+      observations: formAtencion.observations,
+    })
+
+    setAtencionActual(data)
+
+    const estadoAtendida = obtenerEstadoCitaAtendida()
+
+    if (estadoAtendida && cita?.id) {
+      await appointmentService.actualizar(cita.id, {
+        statusId: estadoAtendida.id,
+      })
+    }
+
+    if (storageKey) {
+      localStorage.removeItem(storageKey)
+    }
+
+    setMensaje('Atención finalizada correctamente')
+
+    await cargarDatos()
+
+    navigate('/medico/recetas-medicas')
+
+  } catch (err) {
+    console.error(err)
+    setError(err.message || 'No se pudo finalizar la atención')
+  } finally {
+    setSaving(false)
+  }
+}
 
   const crearReceta = async () => {
     if (!atencionActual) {
