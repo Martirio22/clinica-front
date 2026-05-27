@@ -108,10 +108,9 @@ const AutorizacionAtencion = () => {
 
   const cargarAutorizaciones = async () => {
     try {
-      const data = await attendanceAuthorizationService.listarConFiltros({
-        startDate: `${fechaFiltro}T00:00:00`,
-        endDate: `${fechaFiltro}T23:59:59`,
-      })
+      const data = await attendanceAuthorizationService.listar()
+
+      console.log('AUTORIZACIONES CARGADAS:', data)
 
       setAutorizaciones(data || [])
     } catch (err) {
@@ -225,7 +224,14 @@ const AutorizacionAtencion = () => {
 
   const tieneAutorizacion = (appointmentId) => {
     return autorizaciones.some((authorization) => {
-      return authorization.appointmentId === appointmentId && authorization.isAuthorized !== false
+      const mismaCita = authorization.appointmentId === appointmentId
+
+      const estaAutorizada =
+        authorization.isAuthorized === true ||
+        authorization.isAuthorized === 'true' ||
+        authorization.isAuthorized === 1
+
+      return mismaCita && estaAutorizada && authorization.isActive !== false
     })
   }
 
@@ -355,15 +361,22 @@ const AutorizacionAtencion = () => {
 
       await attendanceAuthorizationService.crear(payload)
 
-      await marcarEnEspera(selectedAppointment)
-
       setSuccess('Atención autorizada correctamente.')
       cerrarAutorizar()
+
       await cargarAutorizaciones()
       await cargarCitasDelDia()
     } catch (err) {
       console.error(err)
-      setModalError(err?.data?.message || err?.message || 'No se pudo autorizar la atención.')
+
+      const message = err?.data?.message || err?.message || 'No se pudo autorizar la atención.'
+
+      setModalError(message)
+
+      if (err?.status === 409 || err?.data?.status === 409) {
+        await cargarAutorizaciones()
+        await cargarCitasDelDia()
+      }
     } finally {
       setSaving(false)
     }
