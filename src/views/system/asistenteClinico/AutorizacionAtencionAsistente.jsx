@@ -10,6 +10,7 @@ import {
   CCol,
   CFormInput,
   CFormLabel,
+  CFormSelect,
   CFormTextarea,
   CModal,
   CModalBody,
@@ -63,6 +64,9 @@ const AutorizacionAtencionAsistente = () => {
   const [error, setError] = useState('')
   const [modalError, setModalError] = useState('')
   const [success, setSuccess] = useState('')
+
+  const [page, setPage] = useState(0)
+  const [itemsPerPage, setItemsPerPage] = useState(5)
 
   const cargarPacientes = async () => {
     try {
@@ -245,6 +249,14 @@ const AutorizacionAtencionAsistente = () => {
       )
     })
   }, [citas, pacientes, busquedaPaciente])
+
+  const from = page * itemsPerPage
+  const to = Math.min((page + 1) * itemsPerPage, citasFiltradas.length)
+  const totalPages = Math.ceil(citasFiltradas.length / itemsPerPage)
+
+  useEffect(() => {
+    setPage(0)
+  }, [busquedaPaciente, fechaFiltro])
 
   const buscarCita = async () => {
     await cargarCitas()
@@ -430,15 +442,11 @@ const AutorizacionAtencionAsistente = () => {
 
               <CTableBody>
                 {citasFiltradas.length === 0 ? (
-                  <CTableRow>
-                    <CTableDataCell colSpan={9} className="text-center">
-                      No existen citas para los filtros seleccionados.
-                    </CTableDataCell>
-                  </CTableRow>
+                  <CTableRow><CTableDataCell colSpan={9} className="text-center">No existen citas registradas.</CTableDataCell></CTableRow>
                 ) : (
-                  citasFiltradas.map((cita, index) => (
+                  citasFiltradas.slice(from, to).map((cita, index) => (
                     <CTableRow key={cita.id}>
-                      <CTableHeaderCell>{index + 1}</CTableHeaderCell>
+                      <CTableHeaderCell>{from + index + 1}</CTableHeaderCell>
 
                       <CTableDataCell>{formatearFechaHora(cita.startDate)}</CTableDataCell>
 
@@ -516,6 +524,26 @@ const AutorizacionAtencionAsistente = () => {
                 )}
               </CTableBody>
             </CTable>
+          )}
+          {citasFiltradas.length > 0 && (
+            <div className="d-flex justify-content-between align-items-center mt-3">
+              <CFormSelect 
+                size="sm" 
+                style={{ width: '150px' }} 
+                value={itemsPerPage} 
+                onChange={(e) => { setItemsPerPage(Number(e.target.value)); setPage(0); }}
+              >
+                <option value={5}>5 por pág</option>
+                <option value={10}>10 por pág</option>
+                <option value={20}>20 por pág</option>
+              </CFormSelect>
+
+              <div>
+                <CButton color="secondary" variant="outline" size="sm" disabled={page === 0} onClick={() => setPage(page - 1)} className="me-2">Anterior</CButton>
+                <span className="mx-2">Pág {page + 1} de {totalPages || 1}</span>
+                <CButton color="secondary" variant="outline" size="sm" disabled={page >= totalPages - 1} onClick={() => setPage(page + 1)}>Siguiente</CButton>
+              </div>
+            </div>
           )}
         </CCardBody>
       </CCard>

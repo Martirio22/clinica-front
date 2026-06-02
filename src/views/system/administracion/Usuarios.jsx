@@ -68,6 +68,20 @@ const Usuarios = () => {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
+  // Configuración de paginación
+  const [page, setPage] = useState(0); // CoreUI/Bootstrap suele ser base 0
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  
+  // Lógica de paginación
+  const from = page * itemsPerPage;
+  const to = Math.min((page + 1) * itemsPerPage, usuarios.length);
+  const totalPages = Math.ceil(usuarios.length / itemsPerPage);
+
+  // Reiniciar a la primera página cuando cambian los usuarios o la cantidad por página
+  useEffect(() => {
+    setPage(0);
+  }, [itemsPerPage, usuarios.length]);
+
   const cargarUsuarios = async () => {
     try {
       setLoading(true)
@@ -415,17 +429,16 @@ const Usuarios = () => {
                 </CTableRow>
               </CTableHead>
 
-              <CTableBody>
-                {usuarios.length === 0 ? (
-                  <CTableRow>
-                    <CTableDataCell colSpan={9} className="text-center">
-                      No existen usuarios registrados.
-                    </CTableDataCell>
-                  </CTableRow>
-                ) : (
-                  usuarios.map((usuario, index) => (
-                    <CTableRow key={usuario.id}>
-                      <CTableHeaderCell scope="row">{index + 1}</CTableHeaderCell>
+             <CTableBody>
+  {usuarios.length === 0 ? (
+    <CTableRow>
+      <CTableDataCell colSpan={9} className="text-center">No existen usuarios registrados.</CTableDataCell>
+    </CTableRow>
+  ) : (
+    usuarios.slice(from, to).map((usuario, index) => (
+      <CTableRow key={usuario.id}>
+        {/* Índice calculado */}
+        <CTableHeaderCell scope="row">{from + index + 1}</CTableHeaderCell>
                       <CTableDataCell>{usuario.firstName}</CTableDataCell>
                       <CTableDataCell>{usuario.lastName}</CTableDataCell>
                       <CTableDataCell>{usuario.email}</CTableDataCell>
@@ -476,6 +489,43 @@ const Usuarios = () => {
               </CTableBody>
             </CTable>
           )}
+          <div className="d-flex justify-content-between align-items-center mt-3">
+  <div>
+    <CFormSelect 
+      size="sm" 
+      style={{ width: '150px' }}
+      value={itemsPerPage}
+      onChange={(e) => setItemsPerPage(Number(e.target.value))}
+    >
+      <option value={5}>5 por página</option>
+      <option value={10}>10 por página</option>
+      <option value={20}>20 por página</option>
+    </CFormSelect>
+  </div>
+  
+  <div>
+    <CButton 
+      color="secondary" 
+      variant="outline" 
+      disabled={page === 0} 
+      onClick={() => setPage(page - 1)}
+      className="me-2"
+    >
+      Anterior
+    </CButton>
+    <span className="mx-2">
+      Página {page + 1} de {totalPages || 1}
+    </span>
+    <CButton 
+      color="secondary" 
+      variant="outline" 
+      disabled={page >= totalPages - 1} 
+      onClick={() => setPage(page + 1)}
+    >
+      Siguiente
+    </CButton>
+  </div>
+</div>
         </CCardBody>
       </CCard>
 

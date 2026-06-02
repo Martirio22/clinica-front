@@ -46,6 +46,8 @@ const MiCalendario = () => {
   const [mensaje, setMensaje] = useState(null)
   const [error, setError] = useState(null)
 
+  const [modalConfirmar, setModalConfirmar] = useState({ visible: false, bloqueoId: null });
+
   // === ESTADO PARA EL MÉDICO LOGUEADO ===
   const [medicoLogueadoId, setMedicoLogueadoId] = useState('')
   const [nombreMedico, setNombreMedico] = useState('')
@@ -167,7 +169,7 @@ const MiCalendario = () => {
       setEstadosAtencion(estadosData || [])
 
       const bloqueosData = await scheduleBlockService.listarPorDoctor(medicoLogueadoId)
-      setBloqueos(bloqueosData || [])
+      setBloqueos((bloqueosData || []).filter(b => b.isActive !== false));
 
     } catch (err) {
       console.error(err)
@@ -266,6 +268,25 @@ const MiCalendario = () => {
       setLoading(false)
     }
   }
+
+  const solicitarCancelarBloqueo = (bloqueoId) => {
+  setModalConfirmar({ visible: true, bloqueoId });
+};
+
+// Función de ejecución real
+const confirmarCancelacion = async () => {
+  try {
+    setLoading(true);
+    await scheduleBlockService.eliminar(modalConfirmar.bloqueoId);
+    setMensaje('Bloqueo cancelado correctamente');
+    setModalConfirmar({ visible: false, bloqueoId: null });
+    await cargarDatos();
+  } catch (err) {
+    setError('No se pudo cancelar el bloqueo');
+  } finally {
+    setLoading(false);
+  }
+};
 
   const abrirModalBloqueo = (cita = null) => {
     const inicio = cita?.startDate ? new Date(cita.startDate) : new Date()
@@ -496,9 +517,9 @@ const MiCalendario = () => {
           <div>{bloqueo.blockingType?.name || bloqueo.blockingTypeName || 'Bloqueo'}</div>
           <small className="text-body-secondary">{bloqueo.reason || 'Sin motivo'}</small>
         </div>
-        <CButton size="sm" color="danger" variant="outline" onClick={() => cancelarBloqueo(bloqueo.id)}>
-          Cancelar bloqueo
-        </CButton>
+        <CButton size="sm" color="danger" variant="outline" onClick={() => solicitarCancelarBloqueo(bloqueo.id)}>
+  Cancelar bloqueo
+</CButton>
       </div>
     </div>
   )
@@ -745,6 +766,24 @@ const MiCalendario = () => {
           <CButton color="warning" onClick={guardarBloqueo}>Guardar bloqueo</CButton>
         </CModalFooter>
       </CModal>
+
+      {/* MODAL DE CONFIRMACIÓN DE CANCELACIÓN */}
+<CModal visible={modalConfirmar.visible} onClose={() => setModalConfirmar({ visible: false, bloqueoId: null })}>
+  <CModalHeader>
+    <CModalTitle>Confirmar acción</CModalTitle>
+  </CModalHeader>
+  <CModalBody>
+    ¿Estás seguro de que deseas cancelar este bloqueo? Esta acción no se puede deshacer.
+  </CModalBody>
+  <CModalFooter>
+    <CButton color="secondary" variant="outline" onClick={() => setModalConfirmar({ visible: false, bloqueoId: null })}>
+      Mantener
+    </CButton>
+    <CButton color="danger" onClick={confirmarCancelacion}>
+      Cancelar bloqueo
+    </CButton>
+  </CModalFooter>
+</CModal>
     </>
   )
 }

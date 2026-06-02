@@ -73,9 +73,9 @@ const RecetasMedicas = () => {
   const [modalError, setModalError] = useState('')
   const [success, setSuccess] = useState('')
 
-  // ============================
-  // ✅ Modal de confirmación (CoreUI)
-  // ============================
+  const [page, setPage] = useState(0)
+  const [itemsPerPage, setItemsPerPage] = useState(5)
+
   const [visibleConfirm, setVisibleConfirm] = useState(false)
   const [confirmTitle, setConfirmTitle] = useState('Confirmación')
   const [confirmMessage, setConfirmMessage] = useState('')
@@ -273,6 +273,14 @@ const RecetasMedicas = () => {
       return patientName.includes(texto) || indications.includes(texto) || detailText.includes(texto)
     })
   }, [recetas, detalles, search, pacientes, citas, atenciones])
+
+  const from = page * itemsPerPage
+  const to = Math.min((page + 1) * itemsPerPage, recetasFiltradas.length)
+  const totalPages = Math.ceil(recetasFiltradas.length / itemsPerPage)
+
+  useEffect(() => {
+    setPage(0)
+  }, [search])
 
   const abrirModalCrearReceta = () => {
     setEditingPrescription(null)
@@ -596,19 +604,15 @@ const abrirModalAgregarMedicamento = (prescription) => {
 
               <CTableBody>
                 {recetasFiltradas.length === 0 ? (
-                  <CTableRow>
-                    <CTableDataCell colSpan={7} className="text-center">
-                      No existen recetas médicas registradas.
-                    </CTableDataCell>
-                  </CTableRow>
+                  <CTableRow><CTableDataCell colSpan={6} className="text-center">No existen recetas registradas.</CTableDataCell></CTableRow>
                 ) : (
-                  recetasFiltradas.map((prescription, index) => {
+                  recetasFiltradas.slice(from, to).map((prescription, index) => {
                     const prescriptionDetails = obtenerDetallesPorReceta(prescription.id)
                     const attention = obtenerAtencion(prescription.medicalAttentionId)
 
                     return (
                       <CTableRow key={prescription.id}>
-                        <CTableHeaderCell>{index + 1}</CTableHeaderCell>
+                        <CTableHeaderCell>{from + index + 1}</CTableHeaderCell>
 
                         <CTableDataCell>{obtenerNombrePacientePorReceta(prescription)}</CTableDataCell>
 
@@ -668,6 +672,24 @@ const abrirModalAgregarMedicamento = (prescription) => {
               </CTableBody>
             </CTable>
           )}
+          <div className="d-flex justify-content-between align-items-center mt-3">
+              <CFormSelect 
+                size="sm" 
+                style={{ width: '150px' }} 
+                value={itemsPerPage} 
+                onChange={(e) => { setItemsPerPage(Number(e.target.value)); setPage(0); }}
+              >
+                <option value={5}>5 por pág</option>
+                <option value={10}>10 por pág</option>
+                <option value={20}>20 por pág</option>
+              </CFormSelect>
+
+              <div>
+                <CButton color="secondary" variant="outline" size="sm" disabled={page === 0} onClick={() => setPage(page - 1)} className="me-2">Anterior</CButton>
+                <span className="mx-2">Pág {page + 1} de {totalPages || 1}</span>
+                <CButton color="secondary" variant="outline" size="sm" disabled={page >= totalPages - 1} onClick={() => setPage(page + 1)}>Siguiente</CButton>
+              </div>
+            </div>
         </CCardBody>
       </CCard>
 

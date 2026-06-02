@@ -27,6 +27,7 @@
     "@coreui/react-chartjs": "^3.0.0",
     "@coreui/utils": "^2.0.2",
     "@popperjs/core": "^2.11.8",
+    "@tabler/icons-webfont": "^3.44.0",
     "axios": "^1.16.1",
     "chart.js": "^4.5.1",
     "classnames": "^2.5.1",

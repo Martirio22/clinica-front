@@ -64,6 +64,9 @@ const Medicos = () => {
   const [modalError, setModalError] = useState('')
   const [success, setSuccess] = useState('')
 
+  const [page, setPage] = useState(0)
+  const [itemsPerPage, setItemsPerPage] = useState(5)
+
   const [confirmModal, setConfirmModal] = useState({
     visible: false,
     title: '',
@@ -195,6 +198,14 @@ const Medicos = () => {
       )
     })
   }, [medicos, search, usuariosMedicos, especialidades])
+
+  const from = page * itemsPerPage
+  const to = Math.min((page + 1) * itemsPerPage, medicosFiltrados.length)
+  const totalPages = Math.ceil(medicosFiltrados.length / itemsPerPage)
+
+  useEffect(() => {
+    setPage(0)
+  }, [search, filtroSpecialtyId, itemsPerPage])
 
   const obtenerUsuarioMedico = (userId) => {
     return usuariosMedicos.find((user) => user.id === userId)
@@ -456,16 +467,14 @@ const Medicos = () => {
               </CTableHead>
 
               <CTableBody>
-                {medicosFiltrados.length === 0 ? (
-                  <CTableRow>
-                    <CTableDataCell colSpan={7} className="text-center">
-                      No existen médicos registrados.
-                    </CTableDataCell>
-                  </CTableRow>
-                ) : (
-                  medicosFiltrados.map((doctor, index) => (
-                    <CTableRow key={doctor.id}>
-                      <CTableHeaderCell scope="row">{index + 1}</CTableHeaderCell>
+  {medicosFiltrados.length === 0 ? (
+    <CTableRow>
+      <CTableDataCell colSpan={7} className="text-center">No hay médicos registrados.</CTableDataCell>
+    </CTableRow>
+  ) : (
+    medicosFiltrados.slice(from, to).map((doctor, index) => (
+      <CTableRow key={doctor.id}>
+        <CTableHeaderCell scope="row">{from + index + 1}</CTableHeaderCell>
 
                       <CTableDataCell>
                         <div>{obtenerNombreUsuario(doctor.userId)}</div>
@@ -519,6 +528,28 @@ const Medicos = () => {
               </CTableBody>
             </CTable>
           )}
+          <div className="d-flex justify-content-between align-items-center mt-3">
+  <CFormSelect 
+    size="sm" 
+    style={{ width: '150px' }} 
+    value={itemsPerPage} 
+    onChange={(e) => setItemsPerPage(Number(e.target.value))}
+  >
+    <option value={5}>5 por pág</option>
+    <option value={10}>10 por pág</option>
+    <option value={20}>20 por pág</option>
+  </CFormSelect>
+  
+  <div>
+    <CButton color="secondary" variant="outline" size="sm" disabled={page === 0} onClick={() => setPage(page - 1)} className="me-2">
+      Anterior
+    </CButton>
+    <span className="mx-2">Página {page + 1} de {totalPages || 1}</span>
+    <CButton color="secondary" variant="outline" size="sm" disabled={page >= totalPages - 1} onClick={() => setPage(page + 1)}>
+      Siguiente
+    </CButton>
+  </div>
+</div>
         </CCardBody>
       </CCard>
 

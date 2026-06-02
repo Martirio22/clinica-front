@@ -64,6 +64,9 @@ const BloqueoAgenda = () => {
   const [modalError, setModalError] = useState('')
   const [success, setSuccess] = useState('')
 
+  const [page, setPage] = useState(0)
+  const [itemsPerPage, setItemsPerPage] = useState(10)
+
   // Estado estructurado para el modal de confirmación dinámico
   const [confirmModal, setConfirmModal] = useState({
     visible: false,
@@ -133,6 +136,14 @@ const BloqueoAgenda = () => {
       return cumpleDoctor && cumpleTipo
     })
   }, [bloqueos, filtroDoctorId, filtroTipoBloqueoId])
+
+  const from = page * itemsPerPage
+  const to = Math.min((page + 1) * itemsPerPage, bloqueosFiltrados.length)
+  const totalPages = Math.ceil(bloqueosFiltrados.length / itemsPerPage)
+
+  useEffect(() => {
+    setPage(0)
+  }, [filtroDoctorId, filtroTipoBloqueoId, itemsPerPage])
 
   const obtenerMedico = (doctorId) => {
     return medicos.find((doctor) => doctor.id === doctorId)
@@ -475,16 +486,16 @@ const BloqueoAgenda = () => {
               </CTableHead>
 
               <CTableBody>
-                {bloqueosFiltrados.length === 0 ? (
-                  <CTableRow>
-                    <CTableDataCell colSpan={8} className="text-center">
-                      No existen bloqueos de agenda registrados.
-                    </CTableDataCell>
-                  </CTableRow>
-                ) : (
-                  bloqueosFiltrados.map((block, index) => (
-                    <CTableRow key={block.id}>
-                      <CTableHeaderCell scope="row">{index + 1}</CTableHeaderCell>
+  {bloqueosFiltrados.length === 0 ? (
+    <CTableRow>
+      <CTableDataCell colSpan={8} className="text-center">
+        No existen bloqueos de agenda registrados.
+      </CTableDataCell>
+    </CTableRow>
+  ) : (
+    bloqueosFiltrados.slice(from, to).map((block, index) => (
+      <CTableRow key={block.id}>
+        <CTableHeaderCell scope="row">{from + index + 1}</CTableHeaderCell>
 
                       <CTableDataCell>{obtenerNombreMedico(block.doctorId)}</CTableDataCell>
 
@@ -530,6 +541,41 @@ const BloqueoAgenda = () => {
               </CTableBody>
             </CTable>
           )}
+          <div className="d-flex justify-content-between align-items-center mt-3">
+  <CFormSelect 
+    size="sm" 
+    style={{ width: '150px' }} 
+    value={itemsPerPage} 
+    onChange={(e) => setItemsPerPage(Number(e.target.value))}
+  >
+    <option value={5}>5 por pág</option>
+    <option value={10}>10 por pág</option>
+    <option value={20}>20 por pág</option>
+  </CFormSelect>
+
+  <div>
+    <CButton 
+      color="secondary" 
+      variant="outline" 
+      size="sm" 
+      disabled={page === 0} 
+      onClick={() => setPage(page - 1)} 
+      className="me-2"
+    >
+      Anterior
+    </CButton>
+    <span className="mx-2">Pág {page + 1} de {totalPages || 1}</span>
+    <CButton 
+      color="secondary" 
+      variant="outline" 
+      size="sm" 
+      disabled={page >= totalPages - 1} 
+      onClick={() => setPage(page + 1)}
+    >
+      Siguiente
+    </CButton>
+  </div>
+</div>
         </CCardBody>
       </CCard>
 

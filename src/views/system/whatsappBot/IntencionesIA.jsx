@@ -10,6 +10,7 @@ import {
   CCol,
   CFormInput,
   CFormLabel,
+  CFormSelect,
   CFormTextarea,
   CModal,
   CModalBody,
@@ -54,6 +55,9 @@ const IntencionesIA = () => {
   const [modalError, setModalError] = useState('')
   const [success, setSuccess] = useState('')
 
+  const [page, setPage] = useState(0)
+  const [itemsPerPage, setItemsPerPage] = useState(5)
+
   const cargarIntenciones = async () => {
     try {
       setLoading(true)
@@ -82,6 +86,14 @@ const IntencionesIA = () => {
       return code.includes(texto) || name.includes(texto) || description.includes(texto)
     })
   }, [intenciones, search])
+
+  const from = page * itemsPerPage
+  const to = Math.min((page + 1) * itemsPerPage, intencionesFiltradas.length)
+  const totalPages = Math.ceil(intencionesFiltradas.length / itemsPerPage)
+
+  useEffect(() => {
+    setPage(0)
+  }, [search])
 
   const abrirCrear = () => {
     setEditingIntent(null)
@@ -276,9 +288,9 @@ const IntencionesIA = () => {
                 {intencionesFiltradas.length === 0 ? (
                   <CTableRow><CTableDataCell colSpan={6} className="text-center">No existen intenciones registradas.</CTableDataCell></CTableRow>
                 ) : (
-                  intencionesFiltradas.map((intent, index) => (
+                  intencionesFiltradas.slice(from, to).map((intent, index) => (
                     <CTableRow key={intent.id}>
-                      <CTableHeaderCell>{index + 1}</CTableHeaderCell>
+                      <CTableHeaderCell>{from + index + 1}</CTableHeaderCell>
                       <CTableDataCell>{intent.code || '-'}</CTableDataCell>
                       <CTableDataCell>{intent.name || '-'}</CTableDataCell>
                       <CTableDataCell>{intent.description || '-'}</CTableDataCell>
@@ -299,6 +311,24 @@ const IntencionesIA = () => {
               </CTableBody>
             </CTable>
           )}
+          <div className="d-flex justify-content-between align-items-center mt-3">
+            <CFormSelect 
+              size="sm" 
+              style={{ width: '150px' }} 
+              value={itemsPerPage} 
+              onChange={(e) => setItemsPerPage(Number(e.target.value))}
+            >
+              <option value={5}>5 por pág</option>
+              <option value={10}>10 por pág</option>
+              <option value={20}>20 por pág</option>
+            </CFormSelect>
+
+            <div>
+              <CButton color="secondary" variant="outline" size="sm" disabled={page === 0} onClick={() => setPage(page - 1)} className="me-2">Anterior</CButton>
+              <span className="mx-2">Pág {page + 1} de {totalPages || 1}</span>
+              <CButton color="secondary" variant="outline" size="sm" disabled={page >= totalPages - 1} onClick={() => setPage(page + 1)}>Siguiente</CButton>
+            </div>
+          </div>
         </CCardBody>
       </CCard>
 

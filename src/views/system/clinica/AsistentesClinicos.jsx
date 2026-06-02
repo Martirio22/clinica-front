@@ -54,6 +54,9 @@ const AsistentesClinicos = () => {
   const [modalError, setModalError] = useState('')
   const [success, setSuccess] = useState('')
 
+  const [page, setPage] = useState(0)
+  const [itemsPerPage, setItemsPerPage] = useState(5)
+
   // Estado del modal de confirmación dinámico unificado (Igual a Especialidades)
   const [confirmModal, setConfirmModal] = useState({
     visible: false,
@@ -122,6 +125,16 @@ const AsistentesClinicos = () => {
       return nombre.includes(texto) || email.includes(texto) || username.includes(texto)
     })
   }, [asistentes, search, usuariosAsistentes])
+
+   // Cálculo de paginación
+  const from = page * itemsPerPage
+  const to = Math.min((page + 1) * itemsPerPage, asistentesFiltrados.length)
+  const totalPages = Math.ceil(asistentesFiltrados.length / itemsPerPage)
+
+  // Reset de página al buscar o cambiar tamaño
+  useEffect(() => {
+    setPage(0)
+  }, [search, itemsPerPage])
 
   const usuariosDisponiblesParaCrear = usuariosAsistentes.filter((user) => {
     const yaEsAsistente = asistentes.some((assistant) => assistant.userId === user.id)
@@ -331,16 +344,16 @@ const AsistentesClinicos = () => {
               </CTableHead>
 
               <CTableBody>
-                {asistentesFiltrados.length === 0 ? (
-                  <CTableRow>
-                    <CTableDataCell colSpan={7} className="text-center">
-                      No existen asistentes clínicos registrados.
-                    </CTableDataCell>
-                  </CTableRow>
-                ) : (
-                  asistentesFiltrados.map((assistant, index) => (
-                    <CTableRow key={assistant.id}>
-                      <CTableHeaderCell scope="row">{index + 1}</CTableHeaderCell>
+  {asistentesFiltrados.length === 0 ? (
+    <CTableRow>
+      <CTableDataCell colSpan={7} className="text-center">
+        No existen asistentes clínicos registrados.
+      </CTableDataCell>
+    </CTableRow>
+  ) : (
+    asistentesFiltrados.slice(from, to).map((assistant, index) => (
+      <CTableRow key={assistant.id}>
+        <CTableHeaderCell scope="row">{from + index + 1}</CTableHeaderCell>
 
                       <CTableDataCell>
                         <div>{obtenerNombreUsuario(assistant.userId)}</div>
@@ -387,6 +400,28 @@ const AsistentesClinicos = () => {
               </CTableBody>
             </CTable>
           )}
+          <div className="d-flex justify-content-between align-items-center mt-3">
+  <CFormSelect 
+    size="sm" 
+    style={{ width: '150px' }} 
+    value={itemsPerPage} 
+    onChange={(e) => setItemsPerPage(Number(e.target.value))}
+  >
+    <option value={5}>5 por pág</option>
+    <option value={10}>10 por pág</option>
+    <option value={20}>20 por pág</option>
+  </CFormSelect>
+  
+  <div>
+    <CButton color="secondary" variant="outline" size="sm" disabled={page === 0} onClick={() => setPage(page - 1)} className="me-2">
+      Anterior
+    </CButton>
+    <span className="mx-2">Página {page + 1} de {totalPages || 1}</span>
+    <CButton color="secondary" variant="outline" size="sm" disabled={page >= totalPages - 1} onClick={() => setPage(page + 1)}>
+      Siguiente
+    </CButton>
+  </div>
+</div>
         </CCardBody>
       </CCard>
 

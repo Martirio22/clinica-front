@@ -48,6 +48,9 @@ const Especialidades = () => {
   const [error, setError] = useState('')
   const [modalError, setModalError] = useState('')
   const [success, setSuccess] = useState('')
+  
+  const [page, setPage] = useState(0)
+  const [itemsPerPage, setItemsPerPage] = useState(10)
 
   // Estado del modal de confirmación dinámico unificado
   const [confirmModal, setConfirmModal] = useState({
@@ -88,6 +91,15 @@ const Especialidades = () => {
       return code.includes(texto) || name.includes(texto) || description.includes(texto)
     })
   }, [especialidades, search])
+
+  const from = page * itemsPerPage
+  const to = Math.min((page + 1) * itemsPerPage, especialidadesFiltradas.length)
+  const totalPages = Math.ceil(especialidadesFiltradas.length / itemsPerPage)
+
+  // Reset de página al filtrar
+  useEffect(() => {
+    setPage(0)
+  }, [search, itemsPerPage])
 
   const abrirModalCrear = () => {
     setEditingSpecialty(null)
@@ -276,16 +288,13 @@ const Especialidades = () => {
               </CTableHead>
 
               <CTableBody>
-                {especialidadesFiltradas.length === 0 ? (
-                  <CTableRow>
-                    <CTableDataCell colSpan={6} className="text-center">
-                      No existen especialidades registradas.
-                    </CTableDataCell>
-                  </CTableRow>
-                ) : (
-                  especialidadesFiltradas.map((specialty, index) => (
-                    <CTableRow key={specialty.id}>
-                      <CTableHeaderCell scope="row">{index + 1}</CTableHeaderCell>
+        {especialidadesFiltradas.length === 0 ? (
+           <CTableRow><CTableDataCell colSpan={6} className="text-center">No hay datos</CTableDataCell></CTableRow>
+        ) : (
+          // Usamos slice para mostrar solo la página actual
+          especialidadesFiltradas.slice(from, to).map((specialty, index) => (
+            <CTableRow key={specialty.id}>
+               <CTableHeaderCell>{from + index + 1}</CTableHeaderCell>
                       <CTableDataCell>{specialty.code}</CTableDataCell>
                       <CTableDataCell>{specialty.name}</CTableDataCell>
                       <CTableDataCell>{specialty.description || '-'}</CTableDataCell>
@@ -322,6 +331,19 @@ const Especialidades = () => {
               </CTableBody>
             </CTable>
           )}
+          <div className="d-flex justify-content-between align-items-center mt-3">
+        <CFormSelect style={{ width: '150px' }} value={itemsPerPage} onChange={(e) => setItemsPerPage(Number(e.target.value))}>
+          <option value={5}>5 por página</option>
+          <option value={10}>10 por página</option>
+        </CFormSelect>
+        
+        <div>
+          <CButton disabled={page === 0} onClick={() => setPage(page - 1)}>Anterior</CButton>
+          <span className="mx-2">Pág {page + 1} de {totalPages || 1}</span>
+          <CButton disabled={page >= totalPages - 1} onClick={() => setPage(page + 1)}>Siguiente</CButton>
+        </div>
+      </div>
+
         </CCardBody>
       </CCard>
 

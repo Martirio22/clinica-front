@@ -50,6 +50,20 @@ const Sucursales = () => {
   const [modalError, setModalError] = useState('')
   const [success, setSuccess] = useState('')
 
+  // Configuración de paginación
+  const [page, setPage] = useState(0)
+  const [itemsPerPage, setItemsPerPage] = useState(10)
+
+  // Cálculos de paginación
+  const from = page * itemsPerPage
+  const to = Math.min((page + 1) * itemsPerPage, sucursales.length)
+  const totalPages = Math.ceil(sucursales.length / itemsPerPage)
+
+  // Resetear a la primera página cuando cambian los filtros o la lista
+  useEffect(() => {
+    setPage(0)
+  }, [itemsPerPage, sucursales.length])
+
   // Estado del modal de confirmación unificado (Alineación superior estándar de la app)
   const [confirmModal, setConfirmModal] = useState({
     visible: false,
@@ -301,16 +315,16 @@ const Sucursales = () => {
               </CTableHead>
 
               <CTableBody>
-                {sucursales.length === 0 ? (
-                  <CTableRow>
-                    <CTableDataCell colSpan={9} className="text-center">
-                      No existen sucursales registradas.
-                    </CTableDataCell>
-                  </CTableRow>
-                ) : (
-                  sucursales.map((branch, index) => (
-                    <CTableRow key={branch.id}>
-                      <CTableHeaderCell scope="row">{index + 1}</CTableHeaderCell>
+  {sucursales.length === 0 ? (
+    <CTableRow>
+      <CTableDataCell colSpan={9} className="text-center">
+        No existen sucursales registradas.
+      </CTableDataCell>
+    </CTableRow>
+  ) : (
+    sucursales.slice(from, to).map((branch, index) => (
+      <CTableRow key={branch.id}>
+        <CTableHeaderCell scope="row">{from + index + 1}</CTableHeaderCell>
                       <CTableDataCell>{branch.name}</CTableDataCell>
                       <CTableDataCell>{branch.address}</CTableDataCell>
                       <CTableDataCell>{branch.city}</CTableDataCell>
@@ -350,6 +364,43 @@ const Sucursales = () => {
               </CTableBody>
             </CTable>
           )}
+          <div className="d-flex justify-content-between align-items-center mt-3">
+  <div>
+    <CFormSelect 
+      size="sm" 
+      style={{ width: '150px' }}
+      value={itemsPerPage}
+      onChange={(e) => setItemsPerPage(Number(e.target.value))}
+    >
+      <option value={5}>5 por página</option>
+      <option value={10}>10 por página</option>
+      <option value={20}>20 por página</option>
+    </CFormSelect>
+  </div>
+  
+  <div>
+    <CButton 
+      color="secondary" 
+      variant="outline" 
+      disabled={page === 0} 
+      onClick={() => setPage(page - 1)}
+      className="me-2"
+    >
+      Anterior
+    </CButton>
+    <span className="mx-2">
+      Página {page + 1} de {totalPages || 1}
+    </span>
+    <CButton 
+      color="secondary" 
+      variant="outline" 
+      disabled={page >= totalPages - 1} 
+      onClick={() => setPage(page + 1)}
+    >
+      Siguiente
+    </CButton>
+  </div>
+</div>
         </CCardBody>
       </CCard>
 

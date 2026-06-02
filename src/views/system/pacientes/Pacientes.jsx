@@ -84,6 +84,9 @@ const [visibleNoSessionModal, setVisibleNoSessionModal] = useState(false);
   const [modalError, setModalError] = useState('')
   const [success, setSuccess] = useState('')
 
+  const [page, setPage] = useState(0)
+  const [itemsPerPage, setItemsPerPage] = useState(5)
+
   // Estado del modal de confirmación dinámico unificado
   const [confirmModal, setConfirmModal] = useState({
     visible: false,
@@ -139,6 +142,15 @@ const [visibleNoSessionModal, setVisibleNoSessionModal] = useState(false);
       return cumpleNombre && cumpleIdentificacion && cumpleWhatsapp
     })
   }, [pacientes, searchNombre, searchIdentificacion, searchWhatsapp])
+
+  const from = page * itemsPerPage
+  const to = Math.min((page + 1) * itemsPerPage, pacientesFiltrados.length)
+  const totalPages = Math.ceil(pacientesFiltrados.length / itemsPerPage)
+
+  // Reset al filtrar
+  useEffect(() => {
+    setPage(0)
+  }, [searchNombre, searchIdentificacion, searchWhatsapp, itemsPerPage])
 
   const abrirModalCrear = () => {
     setEditingPatient(null)
@@ -476,16 +488,16 @@ const [visibleNoSessionModal, setVisibleNoSessionModal] = useState(false);
               </CTableHead>
 
               <CTableBody>
-                {pacientesFiltrados.length === 0 ? (
-                  <CTableRow>
-                    <CTableDataCell colSpan={8} className="text-center">
-                      No existen pacientes registrados.
-                    </CTableDataCell>
-                  </CTableRow>
-                ) : (
-                  pacientesFiltrados.map((patient, index) => (
-                    <CTableRow key={patient.id}>
-                      <CTableHeaderCell scope="row">{index + 1}</CTableHeaderCell>
+  {pacientesFiltrados.length === 0 ? (
+    <CTableRow>
+      <CTableDataCell colSpan={8} className="text-center">
+        No existen pacientes registrados.
+      </CTableDataCell>
+    </CTableRow>
+  ) : (
+    pacientesFiltrados.slice(from, to).map((patient, index) => (
+      <CTableRow key={patient.id}>
+        <CTableHeaderCell scope="row">{from + index + 1}</CTableHeaderCell>
 
                       <CTableDataCell>
                         <div>
@@ -568,6 +580,28 @@ const [visibleNoSessionModal, setVisibleNoSessionModal] = useState(false);
               </CTableBody>
             </CTable>
           )}
+          <div className="d-flex justify-content-between align-items-center mt-3">
+  <CFormSelect 
+    size="sm" 
+    style={{ width: '150px' }} 
+    value={itemsPerPage} 
+    onChange={(e) => setItemsPerPage(Number(e.target.value))}
+  >
+    <option value={5}>5 por pág</option>
+    <option value={10}>10 por pág</option>
+    <option value={20}>20 por pág</option>
+  </CFormSelect>
+  
+  <div>
+    <CButton color="secondary" variant="outline" size="sm" disabled={page === 0} onClick={() => setPage(page - 1)} className="me-2">
+      Anterior
+    </CButton>
+    <span className="mx-2">Pág {page + 1} de {totalPages || 1}</span>
+    <CButton color="secondary" variant="outline" size="sm" disabled={page >= totalPages - 1} onClick={() => setPage(page + 1)}>
+      Siguiente
+    </CButton>
+  </div>
+</div>
         </CCardBody>
       </CCard>
 

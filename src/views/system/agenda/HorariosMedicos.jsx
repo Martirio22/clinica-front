@@ -74,6 +74,9 @@ const HorariosMedicos = () => {
   const [modalError, setModalError] = useState('')
   const [success, setSuccess] = useState('')
 
+  const [page, setPage] = useState(0)
+  const [itemsPerPage, setItemsPerPage] = useState(5)
+
   // Estado unificado del modal de confirmación dinámico
   const [confirmModal, setConfirmModal] = useState({
     visible: false,
@@ -149,6 +152,14 @@ const HorariosMedicos = () => {
       return cumpleDoctor && cumpleSucursal
     })
   }, [horarios, filtroDoctorId, filtroBranchId])
+
+  const from = page * itemsPerPage
+  const to = Math.min((page + 1) * itemsPerPage, horariosFiltrados.length)
+  const totalPages = Math.ceil(horariosFiltrados.length / itemsPerPage)
+
+  useEffect(() => {
+    setPage(0)
+  }, [filtroDoctorId, filtroBranchId, itemsPerPage])
 
   const consultoriosDelFormulario = useMemo(() => {
     if (!form.branchId) return consultorios
@@ -465,16 +476,16 @@ const HorariosMedicos = () => {
               </CTableHead>
 
               <CTableBody>
-                {horariosFiltrados.length === 0 ? (
-                  <CTableRow>
-                    <CTableDataCell colSpan={9} className="text-center">
-                      No existen horarios médicos registrados.
-                    </CTableDataCell>
-                  </CTableRow>
-                ) : (
-                  horariosFiltrados.map((horario, index) => (
-                    <CTableRow key={horario.id}>
-                      <CTableHeaderCell scope="row">{index + 1}</CTableHeaderCell>
+  {horariosFiltrados.length === 0 ? (
+    <CTableRow>
+      <CTableDataCell colSpan={9} className="text-center">
+        No existen horarios médicos registrados.
+      </CTableDataCell>
+    </CTableRow>
+  ) : (
+    horariosFiltrados.slice(from, to).map((horario, index) => (
+      <CTableRow key={horario.id}>
+        <CTableHeaderCell scope="row">{from + index + 1}</CTableHeaderCell>
                       <CTableDataCell>{obtenerNombreMedico(horario.doctorId)}</CTableDataCell>
                       <CTableDataCell>{obtenerNombreSucursal(horario)}</CTableDataCell>
                       <CTableDataCell>{obtenerNombreConsultorio(horario)}</CTableDataCell>
@@ -516,6 +527,41 @@ const HorariosMedicos = () => {
               </CTableBody>
             </CTable>
           )}
+          <div className="d-flex justify-content-between align-items-center mt-3">
+  <CFormSelect 
+    size="sm" 
+    style={{ width: '150px' }} 
+    value={itemsPerPage} 
+    onChange={(e) => setItemsPerPage(Number(e.target.value))}
+  >
+    <option value={5}>5 por pág</option>
+    <option value={10}>10 por pág</option>
+    <option value={20}>20 por pág</option>
+  </CFormSelect>
+
+  <div>
+    <CButton 
+      color="secondary" 
+      variant="outline" 
+      size="sm" 
+      disabled={page === 0} 
+      onClick={() => setPage(page - 1)} 
+      className="me-2"
+    >
+      Anterior
+    </CButton>
+    <span className="mx-2">Pág {page + 1} de {totalPages || 1}</span>
+    <CButton 
+      color="secondary" 
+      variant="outline" 
+      size="sm" 
+      disabled={page >= totalPages - 1} 
+      onClick={() => setPage(page + 1)}
+    >
+      Siguiente
+    </CButton>
+  </div>
+</div>
         </CCardBody>
       </CCard>
 

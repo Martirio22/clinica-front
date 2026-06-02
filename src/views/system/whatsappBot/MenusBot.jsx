@@ -11,6 +11,7 @@ import {
   CFormCheck,
   CFormInput,
   CFormLabel,
+  CFormSelect,
   CFormTextarea,
   CModal,
   CModalBody,
@@ -58,6 +59,9 @@ const MenusBot = () => {
   const [modalError, setModalError] = useState('')
   const [success, setSuccess] = useState('')
 
+  const [page, setPage] = useState(0)
+  const [itemsPerPage, setItemsPerPage] = useState(5)
+
   const cargarMenus = async () => {
     try {
       setLoading(true)
@@ -90,6 +94,14 @@ const MenusBot = () => {
       return code.includes(texto) || name.includes(texto) || message.includes(texto)
     })
   }, [menus, search])
+
+  const from = page * itemsPerPage
+  const to = Math.min((page + 1) * itemsPerPage, menusFiltrados.length)
+  const totalPages = Math.ceil(menusFiltrados.length / itemsPerPage)
+
+  useEffect(() => {
+    setPage(0)
+  }, [search])
 
   const abrirCrear = () => {
     setEditingMenu(null)
@@ -319,9 +331,9 @@ const MenusBot = () => {
                     <CTableDataCell colSpan={7} className="text-center">No existen menús registrados.</CTableDataCell>
                   </CTableRow>
                 ) : (
-                  menusFiltrados.map((menu, index) => (
+                  menusFiltrados.slice(from, to).map((menu, index) => (
                     <CTableRow key={menu.id}>
-                      <CTableHeaderCell>{index + 1}</CTableHeaderCell>
+                      <CTableHeaderCell>{from + index + 1}</CTableHeaderCell>
                       <CTableDataCell>{menu.code || '-'}</CTableDataCell>
                       <CTableDataCell>{menu.name || '-'}</CTableDataCell>
                       <CTableDataCell>
@@ -349,6 +361,24 @@ const MenusBot = () => {
               </CTableBody>
             </CTable>
           )}
+          <div className="d-flex justify-content-between align-items-center mt-3">
+            <CFormSelect 
+              size="sm" 
+              style={{ width: '150px' }} 
+              value={itemsPerPage} 
+              onChange={(e) => setItemsPerPage(Number(e.target.value))}
+            >
+              <option value={5}>5 por pág</option>
+              <option value={10}>10 por pág</option>
+              <option value={20}>20 por pág</option>
+            </CFormSelect>
+
+            <div>
+              <CButton color="secondary" variant="outline" size="sm" disabled={page === 0} onClick={() => setPage(page - 1)} className="me-2">Anterior</CButton>
+              <span className="mx-2">Pág {page + 1} de {totalPages || 1}</span>
+              <CButton color="secondary" variant="outline" size="sm" disabled={page >= totalPages - 1} onClick={() => setPage(page + 1)}>Siguiente</CButton>
+            </div>
+          </div>
         </CCardBody>
       </CCard>
 

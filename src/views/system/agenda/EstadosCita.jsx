@@ -48,6 +48,9 @@ const EstadosCita = () => {
   const [modalError, setModalError] = useState('')
   const [success, setSuccess] = useState('')
 
+  const [page, setPage] = useState(0)
+  const [itemsPerPage, setItemsPerPage] = useState(5)
+
   // Estado estructurado para el modal de confirmación dinámico
   const [confirmModal, setConfirmModal] = useState({
     visible: false,
@@ -96,6 +99,14 @@ const EstadosCita = () => {
       return code.includes(texto) || name.includes(texto) || description.includes(texto)
     })
   }, [estados, search])
+
+  const from = page * itemsPerPage
+  const to = Math.min((page + 1) * itemsPerPage, estadosFiltrados.length)
+  const totalPages = Math.ceil(estadosFiltrados.length / itemsPerPage)
+
+  useEffect(() => {
+    setPage(0)
+  }, [search, itemsPerPage])
 
   const abrirModalCrear = () => {
     setEditingStatus(null)
@@ -335,16 +346,16 @@ const EstadosCita = () => {
               </CTableHead>
 
               <CTableBody>
-                {estadosFiltrados.length === 0 ? (
-                  <CTableRow>
-                    <CTableDataCell colSpan={6} className="text-center">
-                      No existen estados de cita registrados.
-                    </CTableDataCell>
-                  </CTableRow>
-                ) : (
-                  estadosFiltrados.map((status, index) => (
-                    <CTableRow key={status.id}>
-                      <CTableHeaderCell scope="row">{index + 1}</CTableHeaderCell>
+  {estadosFiltrados.length === 0 ? (
+    <CTableRow>
+      <CTableDataCell colSpan={6} className="text-center">
+        No existen estados de cita registrados.
+      </CTableDataCell>
+    </CTableRow>
+  ) : (
+    estadosFiltrados.slice(from, to).map((status, index) => (
+      <CTableRow key={status.id}>
+        <CTableHeaderCell scope="row">{from + index + 1}</CTableHeaderCell>
                       <CTableDataCell>{status.code}</CTableDataCell>
                       <CTableDataCell>{status.name}</CTableDataCell>
                       <CTableDataCell>{status.description || '-'}</CTableDataCell>
@@ -381,6 +392,41 @@ const EstadosCita = () => {
               </CTableBody>
             </CTable>
           )}
+          <div className="d-flex justify-content-between align-items-center mt-3">
+  <CFormSelect 
+    size="sm" 
+    style={{ width: '150px' }} 
+    value={itemsPerPage} 
+    onChange={(e) => setItemsPerPage(Number(e.target.value))}
+  >
+    <option value={5}>5 por pág</option>
+    <option value={10}>10 por pág</option>
+    <option value={20}>20 por pág</option>
+  </CFormSelect>
+
+  <div>
+    <CButton 
+      color="secondary" 
+      variant="outline" 
+      size="sm" 
+      disabled={page === 0} 
+      onClick={() => setPage(page - 1)} 
+      className="me-2"
+    >
+      Anterior
+    </CButton>
+    <span className="mx-2">Pág {page + 1} de {totalPages || 1}</span>
+    <CButton 
+      color="secondary" 
+      variant="outline" 
+      size="sm" 
+      disabled={page >= totalPages - 1} 
+      onClick={() => setPage(page + 1)}
+    >
+      Siguiente
+    </CButton>
+  </div>
+</div>
         </CCardBody>
       </CCard>
 
